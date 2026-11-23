@@ -31,6 +31,30 @@ MATCH_COLUMNS = (
 )
 LINEUP_COLUMNS = [f"{side}_player_{i}" for side in ("home", "away") for i in range(1, 12)]
 
+ATTRIBUTE_COLUMNS = "id, player_fifa_api_id, player_api_id, date, overall_rating, potential"
+
+NOTICE = """\
+European Soccer Database (fixture subset)
+=========================================
+Data by Hugo Mathien, https://www.kaggle.com/datasets/hugomathien/soccer
+Licence: Open Data Commons Open Database License (ODbL) 1.0,
+         http://opendatacommons.org/licenses/odbl/1.0/
+Kaggle licence line: "Database: Open Database, Contents: (c) Original Authors"
+
+This directory is a Derivative Database: one league (England Premier League), two seasons
+(2014/2015, 2015/2016), and for Player_Attributes only the columns id, player_fifa_api_id,
+player_api_id, date, overall_rating and potential. It is redistributed under the ODbL 1.0
+(share-alike): keep this notice and the licence URL with any copy, and offer the same
+licence to anything you derive from it (ODbL section 4.2).
+
+The ODbL covers the database. The contents remain (c) their original authors: match results
+and odds come from football-data.co.uk, player ratings from the FIFA video game series by EA
+Sports via sofifa.com. This repo claims no rights in them; use of the contents is subject to
+any rights those authors hold.
+
+Source of the full file for `make data`: a credential-free mirror, see the repository README.
+"""
+
 SQLITE_TO_DUCKDB = {"INTEGER": "BIGINT", "NUMERIC": "DOUBLE", "REAL": "DOUBLE", "TEXT": "VARCHAR"}
 
 
@@ -93,7 +117,7 @@ def fixture_queries(league: str = FIXTURE_LEAGUE, seasons: Iterable[str] = FIXTU
         "Team": f"SELECT * FROM Team WHERE team_api_id IN ({teams})",
         "Player": f"SELECT * FROM Player WHERE player_api_id IN ({players})",
         "Player_Attributes": (
-            f"SELECT * FROM Player_Attributes WHERE player_api_id IN ({players}) "
+            f"SELECT {ATTRIBUTE_COLUMNS} FROM Player_Attributes WHERE player_api_id IN ({players}) "
             f"AND date >= {_quote(start)} AND date < {_quote(end)}"
         ),
     }
@@ -120,6 +144,13 @@ def export_tables(db_path: Path, out_dir: Path, queries: dict[str, str]) -> list
     source.close()
     target.close()
     return written
+
+
+def write_notice(out_dir: Path) -> Path:
+    """Write the ODbL notice next to the exported fixture files."""
+    path = out_dir / "NOTICE.txt"
+    path.write_text(NOTICE)
+    return path
 
 
 def connect(data_dir: Path) -> duckdb.DuckDBPyConnection:

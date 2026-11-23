@@ -49,7 +49,9 @@ def tiny_sqlite(tmp_path: Path) -> Path:
         CREATE TABLE Team (team_api_id INTEGER, team_long_name TEXT, weight NUMERIC);
         CREATE TABLE Team_Attributes (id INTEGER, team_api_id INTEGER);
         CREATE TABLE Player (player_api_id INTEGER, player_name TEXT);
-        CREATE TABLE Player_Attributes (id INTEGER, player_api_id INTEGER, date TEXT, overall_rating INTEGER);
+        CREATE TABLE Player_Attributes (
+            id INTEGER, player_api_id INTEGER, date TEXT, overall_rating INTEGER,
+            potential INTEGER, player_fifa_api_id INTEGER, extra INTEGER);
         """
         + f"CREATE TABLE Match ({match_ddl});"
     )
@@ -65,12 +67,12 @@ def tiny_sqlite(tmp_path: Path) -> Path:
         [(101, "In League"), (201, "Away A"), (202, "Away B"), (102, "Other League")],
     )
     db.executemany(
-        "INSERT INTO Player_Attributes VALUES (?, ?, ?, ?)",
+        "INSERT INTO Player_Attributes VALUES (?, ?, ?, ?, ?, ?, ?)",
         [
-            (1, 101, "2014-10-01 00:00:00", 70),
-            (2, 101, "2013-10-01 00:00:00", 60),
-            (3, 101, "2016-09-01 00:00:00", 80),
-            (4, 102, "2014-10-01 00:00:00", 50),
+            (1, 101, "2014-10-01 00:00:00", 70, 75, 9, 1),
+            (2, 101, "2013-10-01 00:00:00", 60, 65, 9, 1),
+            (3, 101, "2016-09-01 00:00:00", 80, 85, 9, 1),
+            (4, 102, "2014-10-01 00:00:00", 50, 55, 9, 1),
         ],
     )
     _insert_match(db, 1, 1, "2014/2015", 10, 11)

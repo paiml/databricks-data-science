@@ -95,3 +95,22 @@ def test_export_is_deterministic(tiny_sqlite: Path, tmp_path: Path) -> None:
 
 def test_connect_returns_a_duckdb_connection(tmp_path: Path) -> None:
     assert isinstance(data.connect(tmp_path), duckdb.DuckDBPyConnection)
+
+
+def test_fixture_attribute_columns_are_minimal(tiny_sqlite: Path, tmp_path: Path) -> None:
+    out = tmp_path / "fx"
+    data.export_tables(tiny_sqlite, out, data.fixture_queries("O'Hara League", ["2014/2015"]))
+    cols = [r[0] for r in data.connect(out).execute("DESCRIBE Player_Attributes").fetchall()]
+    assert cols == ["id", "player_fifa_api_id", "player_api_id", "date", "overall_rating", "potential"]
+
+
+def test_write_notice_carries_odbl_attribution(tmp_path: Path) -> None:
+    text = data.write_notice(tmp_path).read_text()
+    for needle in ("ODbL", "opendatacommons.org/licenses/odbl/1.0", "Hugo Mathien", "Original Authors", "share-alike"):
+        assert needle in text
+
+
+def test_committed_fixture_ships_the_notice() -> None:
+    from tests.conftest import FIXTURE
+
+    assert (FIXTURE / "NOTICE.txt").read_text() == data.NOTICE

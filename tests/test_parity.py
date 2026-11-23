@@ -62,7 +62,7 @@ def test_sql_constants_equal_python_constants() -> None:
         "home_advantage": elo.HOME_ADVANTAGE,
         "scale": elo.SCALE,
     }.items():
-        assert re.search(rf"{value} AS {name}\b", elo_sql), name
+        assert re.search(rf"{re.escape(str(value))}[^,]*AS {name}\b", elo_sql), name
     mvp_sql = (queries.SQL_DIR / "mvp.sql").read_text()
     for name, value in {
         "quality_weight": mvp.QUALITY_WEIGHT,
@@ -71,6 +71,7 @@ def test_sql_constants_equal_python_constants() -> None:
         "few_appearances": mvp.FEW_APPEARANCES,
         "top_score_rank": mvp.TOP_SCORE_RANK,
         "rank_gap": mvp.RANK_GAP,
+        "season_start_month": mvp.SEASON_START_MONTH,
+        "score_scale": 10.0**mvp.SCORE_DECIMALS,
     }.items():
-        assert re.search(rf"{value} AS {name}\b", mvp_sql), name
-    assert f"{mvp.SCORE_DECIMALS})" in mvp_sql.replace("\n", " ")
+        assert re.search(rf"{re.escape(str(value))}[^,]*AS {name}\b", mvp_sql), name

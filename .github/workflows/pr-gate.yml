@@ -1,11 +1,19 @@
-# PR Authorization Gate — block PRs from unauthorized contributors
-# Calls reusable workflow from paiml/.github
+# PR Authorization Gate: block PRs from unauthorized contributors.
+# Calls the reusable workflow from paiml/.github, pinned to a full commit sha.
+# Trigger is pull_request (never pull_request_target: that hands a write token and
+# secrets to fork PRs). The called job needs pull-requests: write and nothing else.
 name: PR Gate
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, reopened]
+
+permissions:
+  contents: read
 
 jobs:
   authorize:
-    uses: paiml/.github/.github/workflows/pr-gate.yml@main
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: paiml/.github/.github/workflows/pr-gate.yml@978bf4359d8dd97cceb47372962de42c95c2bbd7

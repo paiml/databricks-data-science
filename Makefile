@@ -11,29 +11,29 @@ install:
 
 # Download the full database (sha256 pinned, about 300 MB, never committed) and export Parquet.
 data:
-	dbx-ds data
+	$(PYTHON) -c "import sys; from dbx_ds.cli import main; sys.exit(main(['data']))"
 
 # Rebuild the small committed fixture from the downloaded file.
 fixture:
-	dbx-ds fixture
+	$(PYTHON) -c "import sys; from dbx_ds.cli import main; sys.exit(main(['fixture']))"
 
 lint:
-	ruff check $(SRC)
-	ruff format --check $(SRC)
+	$(PYTHON) -m ruff check $(SRC)
+	$(PYTHON) -m ruff format --check $(SRC)
 
 format:
-	ruff format $(SRC)
-	ruff check $(SRC) --fix
+	$(PYTHON) -m ruff format $(SRC)
+	$(PYTHON) -m ruff check $(SRC) --fix
 
 typecheck:
-	mypy src
+	$(PYTHON) -m mypy src
 
 test:
-	pytest -q
+	$(PYTHON) -m pytest -q
 
 # 100% line and branch coverage or it fails (fail_under = 100 in pyproject.toml).
 coverage:
-	pytest -q --cov --cov-report=term-missing
+	$(PYTHON) -m pytest -q --cov --cov-report=term-missing
 
 gate: lint typecheck coverage
 

@@ -14,7 +14,8 @@ SQL_DIR = Path(__file__).resolve().parents[2] / "sql"
 def load_results(con: duckdb.DuckDBPyConnection) -> list[elo.Result]:
     rows = con.execute(
         "SELECT match_api_id, season, date, home_team_api_id, away_team_api_id, "
-        "home_team_goal, away_team_goal FROM Match"
+        "home_team_goal, away_team_goal FROM Match "
+        "WHERE home_team_goal IS NOT NULL AND away_team_goal IS NOT NULL"
     ).fetchall()
     return [elo.Result(*row) for row in rows]
 
@@ -33,11 +34,14 @@ def sql_elo(con: duckdb.DuckDBPyConnection) -> list[tuple[str, int, float]]:
 
 def python_mvp(con: duckdb.DuckDBPyConnection) -> list[mvp.PlayerScore]:
     attrs = con.execute(
-        "SELECT player_api_id, date, id, overall_rating FROM Player_Attributes WHERE overall_rating IS NOT NULL"
+        "SELECT player_api_id, date, id, overall_rating FROM Player_Attributes "
+        "WHERE overall_rating IS NOT NULL AND date IS NOT NULL"
     ).fetchall()
     lineup_cols = [f"{s}_player_{i}" for s in ("home", "away") for i in range(1, 12)]
     matches = con.execute(
-        "SELECT season, home_team_goal, away_team_goal, " + ", ".join(lineup_cols) + " FROM Match"
+        "SELECT season, home_team_goal, away_team_goal, "
+        + ", ".join(lineup_cols)
+        + " FROM Match WHERE home_team_goal IS NOT NULL AND away_team_goal IS NOT NULL"
     ).fetchall()
     shaped = [(m[0], m[1], m[2], m[3:14], m[14:25]) for m in matches]
     names = dict(con.execute("SELECT player_api_id, player_name FROM Player").fetchall())

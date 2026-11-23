@@ -53,6 +53,10 @@ make data           # downloads database.sqlite (sha256 checked), writes data/pa
 - **Licence:** "Database: Open Database, Contents: (c) Original Authors", that is the Open Data Commons Open Database
   License (ODbL) 1.0: <http://opendatacommons.org/licenses/odbl/1.0/>. Source of the licence statement: the dataset
   page <https://www.kaggle.com/datasets/hugomathien/soccer> (its structured metadata, read 2026-11-23).
+- **Notice shipped with the data:** `data/fixture/NOTICE.txt` (written by `dbx-ds fixture`, ODbL section 4.2(b)) carries
+  the licence name and URL and the attribution; keep it with any copy of the fixture.
+- **Rights in the contents:** the ODbL covers the database only. Match results, odds and player ratings remain (c) their
+  original authors (football-data.co.uk, EA Sports FIFA via sofifa.com). This repo claims no rights in them.
 - **Attribution:** data by Hugo Mathien via Kaggle; the Kaggle page lists the underlying sources (football-data.co.uk
   for results and odds, sofifa.com for the FIFA player and team attributes, football-data.mx-api.enetscores.com for
   match events). Contents remain (c) their original authors.

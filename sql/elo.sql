@@ -17,6 +17,7 @@ ordered AS (
          WHEN home_team_goal = away_team_goal THEN 0.5
          ELSE 0.0 END AS actual_home
   FROM Match
+  WHERE home_team_goal IS NOT NULL AND away_team_goal IS NOT NULL  -- unplayed or unscored matches are skipped, as in queries.py
 ),
 steps(n, season, home, away, new_home, new_away, ratings) AS (
   SELECT 0, CAST(NULL AS VARCHAR), CAST(NULL AS BIGINT), CAST(NULL AS BIGINT),

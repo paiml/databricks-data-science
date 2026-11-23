@@ -1,16 +1,18 @@
 """MVP and "MVP-adjacent" scoring.
 
-Score = QUALITY_WEIGHT * rating + IMPACT_WEIGHT * win_share (rounded to SCORE_DECIMALS so
-floating-point dust never decides a tie), per player per season.
+Score = QUALITY_WEIGHT * rating + IMPACT_WEIGHT * win_share, per player per season, rounded
+half-up to SCORE_DECIMALS by round_score() so floating-point dust never decides a tie. The SQL
+uses the same rule (floor(x * 10^6 + 0.5) / 10^6), so Python and SQL round identically.
 
 * rating: the player's newest overall_rating (0-100) inside the season.
 * win_share: points the team won while the player started, as a percent of the
   most it could have won (3 per match). 100 means the team won every match.
 * Only players who started at least MIN_APPEARANCES matches are scored.
 
-MVP: rank 1 on score in the season.
+MVP: rank 1 on score in the season (score ties go to the lower player_api_id).
 MVP-adjacent: in the top TOP_SCORE_RANK on score, not the MVP, and either under-rated
-(the overall_rating rank is at least RANK_GAP places worse than the score rank) or a
+(the overall_rating rank is at least RANK_GAP places worse than the score rank; equal
+ratings share a rank, like SQL RANK()) or a
 part-timer (at most FEW_APPEARANCES starts). High value, quietly so.
 
 A season runs 1 August to 31 July, the same as the Match.season labels.
@@ -18,6 +20,7 @@ A season runs 1 August to 31 July, the same as the Match.season labels.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
@@ -69,6 +72,12 @@ def latest_ratings(
     return {key: value[2] for key, value in newest.items()}
 
 
+def round_score(value: float) -> float:
+    """Round half up to SCORE_DECIMALS. One rule, mirrored in sql/mvp.sql."""
+    factor = 10.0**SCORE_DECIMALS
+    return math.floor(value * factor + 0.5) / factor
+
+
 def points(own_goals: int, other_goals: int) -> int:
     """League points for one side: 3 win, 1 draw, 0 loss."""
     if own_goals > other_goals:
@@ -113,7 +122,7 @@ def _qualified(
         if starts < MIN_APPEARANCES:
             continue
         win_share = 100.0 * pts / (3.0 * starts)
-        score = round(QUALITY_WEIGHT * rating + IMPACT_WEIGHT * win_share, SCORE_DECIMALS)
+        score = round_score(QUALITY_WEIGHT * rating + IMPACT_WEIGHT * win_share)
         by_season.setdefault(season, []).append((player, rating, starts, win_share, score))
     return by_season
 
@@ -128,7 +137,11 @@ def _is_adjacent(score_rank: int, rating_rank: int, starts: int) -> bool:
 def _rank_season(season: str, rows: list[Row], names: dict[int, str]) -> list[PlayerScore]:
     by_score = sorted(rows, key=lambda r: (-r[4], r[0]))
     by_rating = sorted(rows, key=lambda r: (-r[1], r[0]))
-    rating_rank = {r[0]: i for i, r in enumerate(by_rating, start=1)}
+    rating_rank: dict[int, int] = {}
+    for i, r in enumerate(by_rating, start=1):
+        # RANK(): players on equal ratings share the first position of their group.
+        same_as_previous = i > 1 and r[1] == by_rating[i - 2][1]
+        rating_rank[r[0]] = rating_rank[by_rating[i - 2][0]] if same_as_previous else i
     return [
         PlayerScore(
             season,

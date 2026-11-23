@@ -33,6 +33,7 @@ def _cmd_data(args: argparse.Namespace) -> None:
 
 def _cmd_fixture(args: argparse.Namespace) -> None:
     data.export_tables(DEFAULT_RAW, DEFAULT_FIXTURE, data.fixture_queries())
+    data.write_notice(DEFAULT_FIXTURE)
     print(f"fixture written to {DEFAULT_FIXTURE}")
 
 

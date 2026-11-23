@@ -27,6 +27,7 @@ def test_data_and_fixture_commands_use_the_default_paths(
 ) -> None:
     calls: list[tuple[str, object]] = []
     monkeypatch.setattr(data, "fetch", lambda dest: calls.append(("fetch", dest)))
+    monkeypatch.setattr(data, "write_notice", lambda out: calls.append(("notice", out)))
     monkeypatch.setattr(
         data,
         "export_tables",
@@ -37,6 +38,7 @@ def test_data_and_fixture_commands_use_the_default_paths(
     assert calls[0] == ("fetch", cli.DEFAULT_RAW)
     assert calls[1][1] == (cli.DEFAULT_RAW, cli.DEFAULT_PARQUET, sorted(data.full_queries()))
     assert calls[2][1] == (cli.DEFAULT_RAW, cli.DEFAULT_FIXTURE, sorted(data.fixture_queries()))
+    assert ("notice", cli.DEFAULT_FIXTURE) in calls
     assert "fixture written" in capsys.readouterr().out
 
 

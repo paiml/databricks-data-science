@@ -103,3 +103,17 @@ def test_adjacent_by_few_appearances_only_inside_top_rank() -> None:
     played[("s", 25)] = (15, 0)
     rows = {r.player_api_id: r for r in mvp.score_players(ratings, played, names)}
     assert rows[25].score_rank > mvp.TOP_SCORE_RANK and not rows[25].is_adjacent
+
+
+def test_round_score_is_half_up() -> None:
+    assert mvp.round_score(52.5000035) == pytest.approx(52.500004, abs=1e-12)
+    assert mvp.round_score(0.1 + 0.2) == 0.3
+    assert mvp.round_score(61.19999999999999) == 61.2
+
+
+def test_equal_ratings_share_a_rating_rank() -> None:
+    ratings = {("s", 1): 90.0, ("s", 2): 80.0, ("s", 3): 80.0, ("s", 4): 80.0, ("s", 5): 70.0}
+    played = {("s", p): (20, 30) for p in range(1, 6)}
+    names = {p: f"P{p}" for p in range(1, 6)}
+    ranks = {r.player_api_id: r.rating_rank for r in mvp.score_players(ratings, played, names)}
+    assert ranks == {1: 1, 2: 2, 3: 2, 4: 2, 5: 5}
