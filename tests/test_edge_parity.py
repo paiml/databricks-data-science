@@ -75,13 +75,19 @@ def test_rounding_midpoint_is_identical() -> None:
 
 
 def test_rating_ties_share_a_rank_in_sql_and_python() -> None:
-    n = 11
-    matches = [game(i, 1, 0, list(range(1, n + 1))) for i in range(1, 11)]
-    attrs = [(p, p, "2014-09-01 00:00:00", 80.0 if p > 1 else 90.0) for p in range(1, n + 1)]
-    rows = {r.player_api_id: r for r in assert_same_mvp(make_db(matches, attrs))}
-    assert rows[1].rating_rank == 1
-    assert {rows[p].rating_rank for p in range(2, n + 1)} == {2}
-    assert not any(r.is_adjacent for r in rows.values() if r.appearances > mvp.FEW_APPEARANCES)
+    # 20 full-time matches (> FEW_APPEARANCES). Away side 1..11 loses every game; home side 12..22 wins.
+    # Player 1 is rated 90, the other 21 are tied on 80. With ROW_NUMBER the winners would sit at rating
+    # ranks 13..23 against score ranks 1..11, a false gap of 12 that makes them "adjacent"; with RANK()
+    # they all share rating rank 2.
+    matches = [game(i, 1, 0, list(range(12, 23)), list(range(1, 12))) for i in range(1, 21)]
+    attrs = [(p, p, "2014-09-01 00:00:00", 90.0 if p == 1 else 80.0) for p in range(1, 23)]
+    rows = {r.player_api_id: r for r in assert_same_mvp(make_db(matches, attrs, players=22))}
+    winners = [rows[p] for p in range(12, 23)]
+    assert len(winners) == 11 and all(r.appearances == 20 > mvp.FEW_APPEARANCES for r in winners)
+    assert {r.rating_rank for p, r in rows.items() if p != 1} == {2}
+    assert sorted(r.score_rank for r in winners) == list(range(1, 12))
+    assert not any(r.is_adjacent for r in rows.values())
+    assert [r.player_api_id for r in rows.values() if r.is_mvp] == [12]
 
 
 def test_season_boundary_dates_agree() -> None:

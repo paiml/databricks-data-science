@@ -101,7 +101,7 @@ def test_fixture_attribute_columns_are_minimal(tiny_sqlite: Path, tmp_path: Path
     out = tmp_path / "fx"
     data.export_tables(tiny_sqlite, out, data.fixture_queries("O'Hara League", ["2014/2015"]))
     cols = [r[0] for r in data.connect(out).execute("DESCRIBE Player_Attributes").fetchall()]
-    assert cols == ["id", "player_fifa_api_id", "player_api_id", "date", "overall_rating", "potential"]
+    assert cols == ["id", "player_api_id", "date", "overall_rating"]
 
 
 def test_write_notice_carries_odbl_attribution(tmp_path: Path) -> None:
@@ -114,3 +114,12 @@ def test_committed_fixture_ships_the_notice() -> None:
     from tests.conftest import FIXTURE
 
     assert (FIXTURE / "NOTICE.txt").read_text() == data.NOTICE
+
+
+def test_fixture_ratings_are_synthetic_and_deterministic(tiny_sqlite: Path, tmp_path: Path) -> None:
+    out = tmp_path / "fx"
+    data.export_tables(tiny_sqlite, out, data.fixture_queries("O'Hara League", ["2014/2015"]))
+    rows = data.connect(out).execute("SELECT id, overall_rating FROM Player_Attributes").fetchall()
+    assert rows == [(i, 50 + (i * 7919 + data.SYNTHETIC_SEED) % 41) for i, _ in rows]
+    assert all(50 <= r <= 90 for _, r in rows)
+    assert "SYNTHETIC" in data.NOTICE

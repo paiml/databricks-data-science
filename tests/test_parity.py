@@ -50,7 +50,7 @@ def test_mvp_sql_equals_python(con) -> None:  # type: ignore[no-untyped-def]
 
 def test_one_mvp_per_season_and_adjacent_exist(con) -> None:  # type: ignore[no-untyped-def]
     rows = queries.python_mvp(con)
-    assert sorted(r.player_name for r in rows if r.is_mvp) == ["Eden Hazard", "Mesut Oezil"]
+    assert sorted(r.player_name for r in rows if r.is_mvp) == ["Danny Simpson", "David Ospina"]
     assert any(r.is_adjacent for r in rows)
 
 

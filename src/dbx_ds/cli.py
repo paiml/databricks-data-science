@@ -46,10 +46,15 @@ def _cmd_elo(args: argparse.Namespace) -> None:
 
 
 def _cmd_mvp(args: argparse.Namespace) -> None:
-    for row in queries.python_mvp(data.connect(args.data_dir)):
-        if row.is_mvp or row.is_adjacent:
-            label = "MVP" if row.is_mvp else "adj"
-            print(f"{row.season}  {label}  {row.player_name}  score {row.score:.2f}")
+    """Print the MVP and MVP-adjacent rows, at most --top per season, best score first."""
+    rows = [r for r in queries.python_mvp(data.connect(args.data_dir)) if r.is_mvp or r.is_adjacent]
+    shown: dict[str, int] = {}
+    for row in sorted(rows, key=lambda r: (r.season, r.score_rank)):
+        if shown.get(row.season, 0) >= args.top:
+            continue
+        shown[row.season] = shown.get(row.season, 0) + 1
+        label = "MVP" if row.is_mvp else "adj"
+        print(f"{row.season}  {label}  {row.player_name}  score {row.score:.2f}")
 
 
 COMMANDS = {"data": _cmd_data, "fixture": _cmd_fixture, "elo": _cmd_elo, "mvp": _cmd_mvp}
