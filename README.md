@@ -126,3 +126,17 @@ assets/        banner.svg
 ## License
 
 Code: Apache-2.0 (see [LICENSE](LICENSE)). Data: ODbL 1.0, contents (c) original authors (see above).
+
+## Demo code for courses 1 to 3
+
+Each lesson demo the scripts narrate lives in the package; the notebooks only call it.
+
+| Course | Notebook | Code | SQL twin (course 5) |
+|---|---|---|---|
+| 1 Databricks from zero | `notebooks/course1_databricks_from_zero.py` | `sqldemo`, `report` | `sql/demo_course1.sql` |
+| 2 Statistics from zero | `notebooks/course2_statistics_from_zero.py` | `course2`, `stats`, `load`, `changelog` | `sql/demo_stats.sql` |
+| 3 Data science from zero | `notebooks/course3_data_science_from_zero.py` | `course3`, `features`, `models` | `sql/demo_features.sql` |
+
+Seeds are fixed (`course2.SIMULATION_SEED`, `course2.RESAMPLE_SEED`). Tests check Python against SQL on a seeded
+synthetic database (`tests/synth.py`). Numbers from the full database are in `tests/test_full_data.py`
+(marker `full_data`, skipped without `make data`; run `pytest -m full_data`).

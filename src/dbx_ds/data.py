@@ -31,7 +31,9 @@ MATCH_COLUMNS = (
 )
 LINEUP_COLUMNS = [f"{side}_player_{i}" for side in ("home", "away") for i in range(1, 12)]
 
-ATTRIBUTE_COLUMNS = "id, player_fifa_api_id, player_api_id, date, overall_rating, potential"
+ATTRIBUTE_COLUMNS = (
+    "id, player_fifa_api_id, player_api_id, date, overall_rating, potential, finishing, sprint_speed, reactions"
+)
 
 NOTICE = """\
 European Soccer Database (fixture subset)
