@@ -310,3 +310,10 @@ def test_parity_features(con: duckdb.DuckDBPyConnection, matches: list[load.Matc
     parts = dict(rows(con, "2.1.3 time-based split: train up to 2013/2014, test after", "demo_features.sql"))
     train, test = features.time_split(feats)
     assert parts == {"train": len(train), "test": len(test)}
+
+
+def test_baseline_log_losses_names_both_methods() -> None:
+    feats = features.build_features(load.load_matches(synth_connection()))
+    losses = course3.baseline_log_losses(feats)
+    assert set(losses) == {"train rates, test rows", "all rates, all rows"}
+    assert all(1.0 < v < 1.2 for v in losses.values())

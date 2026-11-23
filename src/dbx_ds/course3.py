@@ -183,3 +183,18 @@ def capstone(feats: list[Features], steps: int = 150) -> Capstone:
     hits = [1 if y == HOME else 0 for y in y_test]
     coefs = [(name, model.weights[HOME][i + 1]) for i, name in enumerate(INPUT_NAMES)]
     return Capstone(len(train), len(test), acc, base_acc, loss, base_loss, coefs, models.calibration(p_home, hits))
+
+
+def baseline_log_losses(feats: list[Features]) -> dict[str, float]:
+    """2.3.3 mismatch check: the plain-rates baseline log loss under each way of choosing the rates.
+
+    The script's "about 1.06" holds only when the rates come from every match (the test rows leak into the
+    baseline, 1.064 over all matches); with the training share on the test rows it is 1.0715.
+    """
+    train, test = time_split(feats, split_cutoff(feats))
+    y_train = [f.outcome for f in train]
+    y_test = [f.outcome for f in test]
+    y_all = [f.outcome for f in feats]
+    rates = {"train rates, test rows": models.class_shares(y_train), "all rates, all rows": models.class_shares(y_all)}
+    rows = {"train rates, test rows": y_test, "all rates, all rows": y_all}
+    return {name: models.log_loss([q] * len(rows[name]), rows[name]) for name, q in rates.items()}
