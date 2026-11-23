@@ -18,7 +18,7 @@ def test_elo_prints_the_top_teams(capsys: pytest.CaptureFixture[str]) -> None:
 def test_mvp_prints_mvp_and_adjacent_rows(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["mvp", "--data-dir", str(FIXTURE)]) == 0
     out = capsys.readouterr().out
-    assert "MVP  Eden Hazard" in out
+    assert "MVP  David Ospina" in out
     assert "  adj  " in out
 
 
@@ -49,3 +49,13 @@ def test_a_command_is_required() -> None:
 
 def test_paths_are_relative() -> None:
     assert not Path(cli.DEFAULT_RAW).is_absolute()
+
+
+def test_mvp_top_limits_rows_per_season(capsys: pytest.CaptureFixture[str]) -> None:
+    assert cli.main(["mvp", "--data-dir", str(FIXTURE), "--top", "2"]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert len(lines) == 4
+    assert [ln.split()[0] for ln in lines] == ["2014/2015"] * 2 + ["2015/2016"] * 2
+    assert lines[0].split()[1] == "MVP"
+    assert cli.main(["mvp", "--data-dir", str(FIXTURE), "--top", "0"]) == 0
+    assert capsys.readouterr().out == ""

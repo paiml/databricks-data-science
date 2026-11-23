@@ -38,7 +38,7 @@ dbx-ds elo          # top 10 teams on the committed fixture
 dbx-ds mvp          # MVP and MVP-adjacent players per season
 ```
 
-The repo ships a small fixture (two Premier League seasons, 760 matches, `data/fixture/*.parquet`, about 280 KB), so
+The repo ships a small fixture (two Premier League seasons, 760 matches, `data/fixture/*.parquet`, about 125 KB), so
 everything runs with no download. For all 11 leagues:
 
 ```bash
@@ -55,6 +55,9 @@ make data           # downloads database.sqlite (sha256 checked), writes data/pa
   page <https://www.kaggle.com/datasets/hugomathien/soccer> (its structured metadata, read 2026-11-23).
 - **Notice shipped with the data:** `data/fixture/NOTICE.txt` (written by `dbx-ds fixture`, ODbL section 4.2(b)) carries
   the licence name and URL and the attribution; keep it with any copy of the fixture.
+- **Fixture ratings are synthetic:** `Player_Attributes.overall_rating` in `data/fixture/` is a deterministic synthetic
+  integer, `50 + ((id * 7919 + 104729) % 41)`, not the real FIFA value (those are EA Sports contents). So fixture
+  MVPs are illustrative of the method, not of real players. Real ratings come only from `make data`.
 - **Rights in the contents:** the ODbL covers the database only. Match results, odds and player ratings remain (c) their
   original authors (football-data.co.uk, EA Sports FIFA via sofifa.com). This repo claims no rights in them.
 - **Attribution:** data by Hugo Mathien via Kaggle; the Kaggle page lists the underlying sources (football-data.co.uk
@@ -103,7 +106,7 @@ the Python output (ratings to 1e-9, ranks and flags exactly). Not yet run on Dat
 
 1. `make data` on your laptop (or use `data/fixture/` to start small).
 2. In Databricks: Catalog, your schema, Create, Volume (for example `main.default.soccer`).
-3. Upload `data/parquet/*.parquet` (or `data/fixture/*.parquet`) to the Volume.
+3. Upload `data/parquet/*.parquet` (or `data/fixture/*.parquet` **and `data/fixture/NOTICE.txt`**: the ODbL notice travels with every copy) to the Volume.
 4. Add this repo as a Git folder, open a notebook from `notebooks/`, set `DBX_DS_DATA=/Volumes/main/default/soccer`.
 5. For Course 5, run the first cell, which makes temp views over the Volume files; the Elo and MVP SQL then run as is.
 

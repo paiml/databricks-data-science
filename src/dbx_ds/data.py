@@ -31,8 +31,21 @@ MATCH_COLUMNS = (
 )
 LINEUP_COLUMNS = [f"{side}_player_{i}" for side in ("home", "away") for i in range(1, 12)]
 
-ATTRIBUTE_COLUMNS = (
-    "id, player_fifa_api_id, player_api_id, date, overall_rating, potential, finishing, sprint_speed, reactions"
+# The committed fixture carries NO real FIFA ratings (they are EA Sports contents, not covered by the
+# ODbL). overall_rating is a deterministic synthetic integer in 50..90, a pure function of the row id
+# and SYNTHETIC_SEED, so the fixture rebuilds identically. The same expression runs in SQLite and DuckDB.
+SYNTHETIC_SEED = 104729
+SYNTHETIC_RATING = f"50 + ((id * 7919 + {SYNTHETIC_SEED}) % 41)"
+# The course 2 and 3 demos also use potential, finishing, sprint_speed and reactions. They are synthetic in the
+# fixture for the same reason: potential is the rating plus 0..8, the others are other pure functions of the id.
+SYNTHETIC_ATTRIBUTES = {
+    "potential": f"{SYNTHETIC_RATING} + ((id * 31 + 7) % 9)",
+    "finishing": "30 + ((id * 4813 + 11) % 61)",
+    "sprint_speed": "30 + ((id * 6007 + 13) % 61)",
+    "reactions": "35 + ((id * 3911 + 17) % 56)",
+}
+ATTRIBUTE_COLUMNS = f"id, player_api_id, date, {SYNTHETIC_RATING} AS overall_rating, " + ", ".join(
+    f"{expr} AS {name}" for name, expr in SYNTHETIC_ATTRIBUTES.items()
 )
 
 NOTICE = """\
@@ -44,10 +57,17 @@ Licence: Open Data Commons Open Database License (ODbL) 1.0,
 Kaggle licence line: "Database: Open Database, Contents: (c) Original Authors"
 
 This directory is a Derivative Database: one league (England Premier League), two seasons
-(2014/2015, 2015/2016), and for Player_Attributes only the columns id, player_fifa_api_id,
-player_api_id, date, overall_rating and potential. It is redistributed under the ODbL 1.0
-(share-alike): keep this notice and the licence URL with any copy, and offer the same
-licence to anything you derive from it (ODbL section 4.2).
+(2014/2015, 2015/2016), and for Player_Attributes only the columns id, player_api_id, date,
+overall_rating, potential, finishing, sprint_speed and reactions. It is redistributed under the ODbL 1.0 (share-alike): keep this notice and the
+licence URL with any copy, and offer the same licence to anything you derive from it (ODbL 4.2).
+
+SYNTHETIC RATINGS: Player_Attributes.overall_rating (and potential, finishing, sprint_speed, reactions) in
+this fixture is NOT the real FIFA value.
+It is a deterministic synthetic integer, 50 + ((id * 7919 + 104729) % 41), a function of the row
+id only, so the fixture rebuilds identically. Players' names, teams and match lineups, results,
+and rating dates come from the database; the rating values do not. Real values come only from
+`make data` (the full download). Fixture results (such as which player is the MVP) are therefore
+illustrative of the method, not of real players.
 
 The ODbL covers the database. The contents remain (c) their original authors: match results
 and odds come from football-data.co.uk, player ratings from the FIFA video game series by EA
