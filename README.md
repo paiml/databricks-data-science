@@ -129,3 +129,39 @@ assets/        banner.svg
 ## License
 
 Code: Apache-2.0 (see [LICENSE](LICENSE)). Data: ODbL 1.0, contents (c) original authors (see above).
+
+## Demo code for courses 1 to 5
+
+Each lesson demo the scripts narrate lives in the package; the notebooks only call it.
+
+| Course | Notebook | Code | SQL twin (course 5) |
+|---|---|---|---|
+| 1 Databricks from zero | `notebooks/course1_databricks_from_zero.py` | `sqldemo`, `report` | `sql/demo_course1.sql` |
+| 2 Statistics from zero | `notebooks/course2_statistics_from_zero.py` | `course2`, `stats`, `load`, `changelog` | `sql/demo_stats.sql` |
+| 3 Data science from zero | `notebooks/course3_data_science_from_zero.py` | `course3`, `features`, `models` | `sql/demo_features.sql` |
+| 4 Sports analytics (Python) | `notebooks/course4_sports_analytics_python.py` | `course4`, `eloplus`, `mvpplus` | `sql/demo_elo.sql`, `sql/demo_mvp.sql` |
+| 5 Sports analytics (SQL) | `notebooks/course5_sports_analytics_sql.sql` | `sql/elo_dbx.sql`, `sql/c5_views.sql` | the views plus the two demo files, `sql/demo_parity.sql` |
+
+Seeds are fixed (`course2.SIMULATION_SEED`, `course2.RESAMPLE_SEED`). Tests check Python against SQL on a seeded
+synthetic database (`tests/synth.py`). Numbers from the full database are in `tests/test_full_data.py`
+(marker `full_data`, skipped without `make data`; run `pytest -m full_data`).
+
+### Courses 4 and 5: decisions to know about
+
+- **Elo without MAP.** `sql/elo_dbx.sql` replays one match day per recursion step with one state row per (parameter set,
+  team), so it is about 1,700 steps instead of 26,000 and has no MAP, no LATERAL and no DuckDB-only call. It equals
+  `eloplus.replay` to 1e-9. It relies on no team playing twice on one date (`tests/test_c5_sql.py` checks parity on a
+  database where that holds). On the full database it took 6.3 s on `intel`, against 443.5 s for `sql/elo.sql`.
+- **Per-league MVP.** `mvpplus.score_leagues` ranks inside each league-season, so a player's starts are counted per league.
+  The all-league numbers the scripts quote (2199 to 3003 qualified players, Messi 89.35) still come from `queries.python_mvp`;
+  the per-league counts differ a little (2202 to 3032) because a player in two leagues is counted in each.
+- **Position** is taken from the lineup slot (slot 1 GK, 2-5 DEF, 6-8 MID, 9-11 FWD; the group he started in most, per player-season).
+  **z-score** is taken inside the position group of one league-season (population standard deviation; shown as 50 + 10 z).
+- **Elo-adjusted win share** is `50 + 100 * mean(actual - expected)` over the player's starts, with the pre-match Elo forecast (home bonus included) as expected.
+- **Standings check** orders by points, goal difference, goals for, team id; Spearman is `1 - 6 sum(d^2) / (n (n^2 - 1))` on those ranks.
+- **Python against SQL.** `src/dbx_ds/course4.py` writes `py_elo` and `py_mvp`; `sql/demo_parity.sql` counts differing rows (0).
+  The views are plain `TEMP VIEW`s: on the full database make them tables first, as each query re-runs the recursion.
+- **Not run on Databricks.** Everything is verified on DuckDB only (fixture, a seeded multi-league database, and the full database
+  on `intel`). The recursion-depth limit of Databricks SQL must cover the number of distinct match dates before the Elo is run on the full data.
+- Full-database numbers: `tests/test_full_data_c45.py`. The c3 baseline log loss check is `course3.baseline_log_losses`.
+
