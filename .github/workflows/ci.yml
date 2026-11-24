@@ -50,9 +50,19 @@ jobs:
     name: gate
     runs-on: ubuntu-24.04
     if: ${{ always() }}
+    timeout-minutes: 30
     needs: [lint, test]
     steps:
       - name: All jobs must succeed
         run: |
           test "${{ needs.lint.result }}" = success
           test "${{ needs.test.result }}" = success
+      # CB-2100: pmat reaches the CB rule roster only through a full
+      # `pmat comply check` (no --checks filter) run by a required check.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install pmat (pinned)
+        run: cargo install pmat --version 3.46.0 --locked
+      - name: Comply check (full roster, no filter)
+        run: pmat comply check
