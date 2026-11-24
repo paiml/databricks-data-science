@@ -1,0 +1,24 @@
+<svg width="800" height="200" viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d">
+  <title id="t">Data Science on Databricks: Elo ranking and MVP</title>
+  <desc id="d">A football pitch with a rising Elo rating curve and a highlighted MVP marker.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0b3d2e"/>
+      <stop offset="100%" stop-color="#14663f"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="200" rx="12" fill="url(#bg)"/>
+  <g fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2">
+    <rect x="20" y="20" width="760" height="160"/>
+    <line x1="400" y1="20" x2="400" y2="180"/>
+    <circle cx="400" cy="100" r="34"/>
+    <rect x="20" y="60" width="60" height="80"/>
+    <rect x="720" y="60" width="60" height="80"/>
+  </g>
+  <polyline points="60,150 140,138 220,142 300,118 380,104 460,110 540,82 620,66 700,48"
+            fill="none" stroke="#ffd166" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="700" cy="48" r="9" fill="#ffd166"/>
+  <circle cx="700" cy="48" r="16" fill="none" stroke="#ffd166" stroke-opacity="0.6" stroke-width="2"/>
+  <text x="400" y="92" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#ffffff">Data Science on Databricks</text>
+  <text x="400" y="128" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#e8f5ee">Elo team ranking, MVP and MVP-adjacent players</text>
+</svg>

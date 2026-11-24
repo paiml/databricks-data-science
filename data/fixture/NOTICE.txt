@@ -1,0 +1,25 @@
+European Soccer Database (fixture subset)
+=========================================
+Data by Hugo Mathien, https://www.kaggle.com/datasets/hugomathien/soccer
+Licence: Open Data Commons Open Database License (ODbL) 1.0,
+         http://opendatacommons.org/licenses/odbl/1.0/
+Kaggle licence line: "Database: Open Database, Contents: (c) Original Authors"
+
+This directory is a Derivative Database: one league (England Premier League), two seasons
+(2014/2015, 2015/2016), and for Player_Attributes only the columns id, player_api_id, date and
+overall_rating. It is redistributed under the ODbL 1.0 (share-alike): keep this notice and the
+licence URL with any copy, and offer the same licence to anything you derive from it (ODbL 4.2).
+
+SYNTHETIC RATINGS: Player_Attributes.overall_rating in this fixture is NOT the real FIFA value.
+It is a deterministic synthetic integer, 50 + ((id * 7919 + 104729) % 41), a function of the row
+id only, so the fixture rebuilds identically. Players' names, teams and match lineups, results,
+and rating dates come from the database; the rating values do not. Real values come only from
+`make data` (the full download). Fixture results (such as which player is the MVP) are therefore
+illustrative of the method, not of real players.
+
+The ODbL covers the database. The contents remain (c) their original authors: match results
+and odds come from football-data.co.uk, player ratings from the FIFA video game series by EA
+Sports via sofifa.com. This repo claims no rights in them; use of the contents is subject to
+any rights those authors hold.
+
+Source of the full file for `make data`: a credential-free mirror, see the repository README.
