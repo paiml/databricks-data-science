@@ -99,8 +99,14 @@ score = 0.7 * rating + 0.3 * win_share
 ## Python and SQL agree
 
 `tests/test_parity.py` runs `sql/elo.sql` and `sql/mvp.sql` on the fixture with DuckDB and asserts the output equals
-the Python output (ratings to 1e-9, ranks and flags exactly). Not yet run on Databricks SQL itself; see
-`CHANGELOG.md`.
+the Python output (ratings to 1e-9, ranks and flags exactly); `tests/test_c5_sql.py` and `tests/test_same_day.py` do the
+same for `sql/elo_dbx.sql` and the Course 5 views, including a team playing twice on one date.
+
+**Not yet run on Databricks SQL itself.** Every SQL file is verified on DuckDB only, and the header of each says so. A
+SQLite parity run is not possible: SQLite refuses window functions in the recursive step that `sql/elo_dbx.sql` and the
+`elo_state` view need, and has no MAP for `sql/elo.sql`. Before the first Databricks run, raise its recursion-depth limit
+to cover the number of distinct match dates, then run `sql/demo_parity.sql` against Python tables written to the
+warehouse. See `CHANGELOG.md`.
 
 ## Databricks Free Edition: upload path
 
@@ -150,8 +156,8 @@ synthetic database (`tests/synth.py`). Numbers from the full database are in `te
 
 - **Elo without MAP.** `sql/elo_dbx.sql` replays one match day per recursion step with one state row per (parameter set,
   team), so it is about 1,700 steps instead of 26,000 and has no MAP, no LATERAL and no DuckDB-only call. It equals
-  `eloplus.replay` to 1e-9. It relies on no team playing twice on one date (`tests/test_c5_sql.py` checks parity on a
-  database where that holds). On the full database it took 6.3 s on `intel`, against 443.5 s for `sql/elo.sql`.
+  `eloplus.replay` to 1e-9. A date on which no team plays twice is one step; a date on which some team does is replayed one match per
+  step in `match_api_id` order, the same tiebreak as `elo.py` (`tests/test_same_day.py` checks it on a double-header case). On the full database it took 6.3 s on `intel`, against 443.5 s for `sql/elo.sql`.
 - **Per-league MVP.** `mvpplus.score_leagues` ranks inside each league-season, so a player's starts are counted per league.
   The all-league numbers the scripts quote (2199 to 3003 qualified players, Messi 89.35) still come from `queries.python_mvp`;
   the per-league counts differ a little (2202 to 3032) because a player in two leagues is counted in each.

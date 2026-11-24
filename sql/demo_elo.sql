@@ -33,7 +33,7 @@ ORDER BY sd.is_home DESC, sd.team;
 SELECT round(min(rating), 1) AS lowest, round(max(rating), 1) AS highest, min(rating) > 1000 AND max(rating) < 2000 AS ok
 FROM elo_season;
 
--- 1.2.5 check 5 of 5: no team plays twice on one date, so replaying a day at a time equals replaying by match
+-- 1.2.5 check 5 of 5: how many team-dates have a team playing twice; those dates replay one match per step, so day-by-day equals match-by-match
 SELECT count(*) AS teams_twice_on_one_day FROM (SELECT team, day FROM elo_sides GROUP BY team, day HAVING count(*) > 1) d;
 
 -- 1.3.3 home advantage: result shares and mean goals per side

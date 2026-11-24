@@ -1,5 +1,5 @@
 -- Course 3 examples in SQL, by lesson. Each has a Python twin in src/dbx_ds/features.py;
--- tests/test_demo_sql_parity.py checks they agree.
+-- tests/test_demo_sql.py checks they agree.
 
 -- 1.1.3 the target: home_win = home goals > away goals
 SELECT count(*) AS matches, sum(CASE WHEN home_team_goal > away_team_goal THEN 1 ELSE 0 END) AS home_wins

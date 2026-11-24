@@ -1,7 +1,7 @@
 """Course 2 (Statistics From Zero) demo functions: one per gap in the lesson scripts.
 
 Each function returns plain data; the notebook prints it with dbx_ds.report. The same
-questions appear in SQL in sql/demo_stats.sql, and tests/test_demo_sql_parity.py checks
+questions appear in SQL in sql/demo_stats.sql, and tests/test_demo_sql.py checks
 the two agree.
 """
 

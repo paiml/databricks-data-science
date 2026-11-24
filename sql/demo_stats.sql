@@ -1,5 +1,5 @@
 -- Course 2 examples in SQL (DuckDB; plain enough for Databricks SQL), by lesson. Course 5 reuses them.
--- Each query has a Python twin in src/dbx_ds/course2.py; tests/test_demo_sql_parity.py checks they agree.
+-- Each query has a Python twin in src/dbx_ds/course2.py; tests/test_demo_sql.py checks they agree.
 
 -- 1.1.5 percentiles of overall_rating
 SELECT count(overall_rating) AS n,
