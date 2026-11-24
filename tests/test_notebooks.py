@@ -40,7 +40,7 @@ def test_sql_notebook_cells_run() -> None:
         if re.match(r"(--[^\n]*\n)*\s*(SELECT|WITH)\b(?!.*CREATE)", cell) and "CREATE OR REPLACE TEMP VIEW" not in cell:
             assert rows, cell[:80]
         ran += 1
-    assert ran == 36
+    assert ran == 37
     assert con.execute("SELECT count(*) FROM mvp_scores").fetchone() == (649,)
 
 

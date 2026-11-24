@@ -7,7 +7,7 @@ from dataclasses import astuple, dataclass, fields
 
 import duckdb
 
-from dbx_ds import eloplus, mvp, mvpplus, report, sqldemo
+from dbx_ds import elo, eloplus, mvp, mvpplus, report, sqldemo
 
 PREMIER_LEAGUE = "England Premier League"
 GRID_KS = (5.0, 10.0, 20.0, 30.0, 40.0, 60.0)
@@ -55,6 +55,20 @@ def elo_lines(a: Analysis, league: int, season: str, top: int = 5) -> list[str]:
     """The Elo top teams of one league-season, as text lines."""
     rows = eloplus.elo_table(a.games, a.ratings, league, season)[:top]
     return [f"{i}. {a.teams[team]}  {rating:.1f}" for i, (_, _, team, rating) in enumerate(rows, start=1)]
+
+
+def current_top(a: Analysis, n: int = 5) -> list[tuple[int, str, float]]:
+    """(place, team, rating) of the current Elo table over every league: each team at its latest season.
+
+    SQL twin: the "all leagues together" query in sql/demo_elo.sql.
+    """
+    table = elo.current_table(a.ratings)[:n]
+    return [(i, a.teams[team], round(rating, 1)) for i, (team, rating) in enumerate(table, start=1)]
+
+
+def current_lines(a: Analysis, n: int = 5) -> list[str]:
+    """current_top as text lines."""
+    return [f"{i}. {team}  {rating}" for i, team, rating in current_top(a, n)]
 
 
 def card_lines(a: Analysis, league: int, season: str, n: int = 5) -> list[str]:
