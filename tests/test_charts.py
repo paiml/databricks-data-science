@@ -5,14 +5,17 @@ from __future__ import annotations
 import builtins
 import re
 
+import numpy as np
 import pytest
+from matplotlib import pyplot as plt
+from matplotlib.figure import Figure
 
 from dbx_ds import charts
 
 BINS = [(0.0, 0.1, 0.2, 5), (0.5, 0.55, 0.5, 9)]
 
 
-def _all():
+def _all() -> list[Figure]:
     return [
         charts.line_chart("t1", "x", "y", [(10, 0.4), (20, 0.5)]),
         charts.grouped_bars("t2", "k", "share", ["0", "1"], [("real", [0.3, 0.7]), ("poisson", [0.4, 0.6])]),
@@ -48,3 +51,38 @@ def test_show_calls_display_when_it_exists(monkeypatch: pytest.MonkeyPatch, caps
     charts.show(charts.line_chart("shown", "x", "y", [(1, 1)]))
     assert seen == ["shown"]
     assert capsys.readouterr().out == ""
+
+
+def test_each_chart_draws_the_rows_it_was_given() -> None:
+    line, grouped, bars, scatter, calib = _all()
+    assert line.axes[0].lines[0].get_xydata().tolist() == [[10, 0.4], [20, 0.5]]
+    heights = [p.get_height() for p in grouped.axes[0].patches]
+    xs = [p.get_x() for p in grouped.axes[0].patches]
+    assert heights == [0.3, 0.7, 0.4, 0.6]
+    assert len(set(xs)) == 4 and xs[0] < xs[2] < xs[1] < xs[3]
+    assert [p.get_height() for p in bars.axes[0].patches] == [0.4, 0.5]
+    assert [t.get_text() for t in bars.axes[0].get_xticklabels()] == ["1", "2"]
+    assert np.asarray(scatter.axes[0].collections[0].get_offsets()).tolist() == [[1, 2], [3, 4]]
+    diag, model = calib.axes[0].lines
+    assert diag.get_xydata().tolist() == [[0, 0], [1, 1]]
+    assert model.get_xydata().tolist() == [[0.1, 0.2], [0.55, 0.5]]
+
+
+def test_show_closes_the_figure_both_ways(monkeypatch: pytest.MonkeyPatch) -> None:
+    plt.close("all")
+    charts.show(charts.bar_chart("a", "x", "y", ["1"], [1]))
+    assert plt.get_fignums() == []
+    monkeypatch.setattr(builtins, "display", lambda fig: None, raising=False)
+    charts.show(charts.bar_chart("b", "x", "y", ["1"], [1]))
+    assert plt.get_fignums() == []
+
+
+def test_display_is_found_in_the_ipython_user_namespace(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[str] = []
+
+    class Shell:
+        user_ns = {"display": lambda fig: seen.append(fig.axes[0].get_title())}
+
+    monkeypatch.setattr(builtins, "get_ipython", lambda: Shell(), raising=False)
+    charts.show(charts.line_chart("ns", "x", "y", [(1, 1)]))
+    assert seen == ["ns"]

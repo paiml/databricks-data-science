@@ -9,7 +9,7 @@ from __future__ import annotations
 import builtins
 import hashlib
 import io
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 import matplotlib
 
@@ -82,12 +82,19 @@ def svg(fig: Figure) -> bytes:
     return buf.getvalue()
 
 
+def _display() -> Callable[[Figure], object] | None:
+    """Databricks `display`: the kernel's user namespace first, then the builtin IPython installs."""
+    ip = getattr(builtins, "get_ipython", lambda: None)()
+    found = getattr(ip, "user_ns", {}).get("display") or getattr(builtins, "display", None)
+    return found if callable(found) else None
+
+
 def show(fig: Figure) -> None:
     """Databricks: `display(fig)`. Elsewhere: print `chart <title> sha256:<first 12 hex>`."""
     title = fig.axes[0].get_title()
-    shown = getattr(builtins, "display", None)
+    shown = _display()
     if shown is not None:
         shown(fig)
-        plt.close(fig)
     else:
         print(f"chart {title} sha256:{hashlib.sha256(svg(fig)).hexdigest()[:12]}")
+    plt.close(fig)
