@@ -1,25 +1,37 @@
 -- The views behind Course 5: the Elo replay (no MAP) and the MVP tables, per league and season.
--- Same rules as src/dbx_ds/{elo,eloplus,mvp,mvpplus}.py; tests/test_views.py checks them against Python.
+-- Same rules as src/dbx_ds/{elo,eloplus,mvp,mvpplus}.py; tests/test_c5_sql.py checks them against Python.
 -- Every view reads only Match, Player and Player_Attributes, so the cells run on a Databricks SQL warehouse once
 -- those three tables (or temp views over the Parquet files) exist. Verified on DuckDB; NOT yet run on Databricks.
 -- elo_state is a WITH RECURSIVE query: Databricks limits recursion depth, so raise that limit to cover the number
--- of distinct match dates (about 1,700 on the full database) before running it there.
+-- of replay steps (distinct match dates, about 1,700 on the full database before the same-day fix; size it with SELECT max(day) FROM elo_sides) before running it there.
 
 -- 3.1.2 view elo_params: one row per (K, home bonus) pair; the tuning cell swaps in a grid of pairs
 CREATE OR REPLACE TEMP VIEW elo_params AS
 SELECT * FROM (VALUES (1, CAST(20.0 AS DOUBLE), CAST(100.0 AS DOUBLE), CAST(400.0 AS DOUBLE), CAST(1500.0 AS DOUBLE)))
   AS t(pid, k_factor, home_advantage, scale, initial_rating);
 
--- 3.1.2 view elo_sides: one row per team per match, with the replay day (distinct dates, in order)
+-- 3.1.2 view elo_sides: one row per team per match with its replay step; a date on which a team plays twice goes one match per step, in match_api_id order
 CREATE OR REPLACE TEMP VIEW elo_sides AS
-WITH played AS (
-  SELECT match_api_id, league_id, season, home_team_api_id AS home, away_team_api_id AS away,
+WITH raw AS (
+  SELECT match_api_id, league_id, season, date, home_team_api_id AS home, away_team_api_id AS away,
          CASE WHEN home_team_goal > away_team_goal THEN 1.0
               WHEN home_team_goal = away_team_goal THEN 0.5
-              ELSE 0.0 END AS actual_home,
-         dense_rank() OVER (ORDER BY date) AS day
+              ELSE 0.0 END AS actual_home
   FROM Match
   WHERE home_team_goal IS NOT NULL AND away_team_goal IS NOT NULL
+),
+repeat_dates AS (
+  SELECT DISTINCT date FROM (
+    SELECT date, home AS team FROM raw UNION ALL SELECT date, away FROM raw
+  ) t
+  GROUP BY date, team
+  HAVING count(*) > 1
+),
+played AS (
+  SELECT match_api_id, league_id, season, home, away, actual_home,
+         dense_rank() OVER (ORDER BY raw.date, CASE WHEN r.date IS NOT NULL THEN match_api_id ELSE 0 END) AS day
+  FROM raw
+  LEFT JOIN repeat_dates r ON r.date = raw.date
 )
 SELECT match_api_id, league_id, season, day, home AS team, 1 AS is_home, actual_home AS actual FROM played
 UNION ALL

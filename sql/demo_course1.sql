@@ -1,5 +1,5 @@
 -- Course 1 demo queries, by lesson. Copied from the course 1 authoring file DEMO-QUERIES.sql (catalogue).
--- Numbers in the comments were measured on the FULL database (sha256 4df85697...39a9); tests/test_course1.py
+-- Numbers in the comments were measured on the FULL database (sha256 4df85697...39a9); tests/test_full_data.py
 -- checks them when `make data` has been run. Plain ANSI: runs on DuckDB and Databricks SQL.
 
 -- 2.1.2

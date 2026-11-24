@@ -40,8 +40,14 @@ def test_sql_notebook_cells_run() -> None:
         if re.match(r"(--[^\n]*\n)*\s*(SELECT|WITH)\b(?!.*CREATE)", cell) and "CREATE OR REPLACE TEMP VIEW" not in cell:
             assert rows, cell[:80]
         ran += 1
-    assert ran == 35
+    assert ran == 36
     assert con.execute("SELECT count(*) FROM mvp_scores").fetchone() == (649,)
+
+
+def test_sql_notebook_carries_the_standalone_elo_query() -> None:
+    flat = sqldemo.normalise((REPO / "notebooks" / "course5_sports_analytics_sql.sql").read_text())
+    ((_, standalone),) = sqldemo.parse((REPO / "sql" / "elo_dbx.sql").read_text())
+    assert sqldemo.normalise(standalone) in flat
 
 
 def test_sql_notebook_carries_every_demo_statement() -> None:
