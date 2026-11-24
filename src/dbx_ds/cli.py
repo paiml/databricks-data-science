@@ -6,7 +6,7 @@ import argparse
 from collections.abc import Sequence
 from pathlib import Path
 
-from dbx_ds import data, elo, queries
+from dbx_ds import data, dbxapi, elo, queries
 
 DEFAULT_RAW = Path("data/raw/database.sqlite")
 DEFAULT_PARQUET = Path("data/parquet")
@@ -22,7 +22,28 @@ def build_parser() -> argparse.ArgumentParser:
         cmd = sub.add_parser(name, help=f"print the {name} table")
         cmd.add_argument("--data-dir", type=Path, default=DEFAULT_FIXTURE)
         cmd.add_argument("--top", type=int, default=10)
+    dbx = sub.add_parser("dbx", help="drive a Databricks workspace over the REST API")
+    dbx.add_argument("action", choices=["whoami", "import", "capture"])
+    dbx.add_argument("--profile", default="kaizen-c11")
+    dbx.add_argument("--cfg", type=Path, default=Path.home() / ".databrickscfg")
+    dbx.add_argument("--remote-dir", default="/Shared/dbx-ds")
+    dbx.add_argument("--out", type=Path, default=Path("captures"))
     return parser
+
+
+def _cmd_dbx(args: argparse.Namespace) -> None:
+    client = dbxapi.Client(*dbxapi.load_auth(args.cfg, args.profile))
+    if args.action == "whoami":
+        print(f"auth OK: {client.whoami()}")
+    elif args.action == "import":
+        for nb in sorted(Path("notebooks").glob("course*")):
+            client.import_notebook(nb, f"{args.remote_dir}/{nb.stem}")
+            print(f"imported {nb.name}")
+    else:
+        wh = client.warehouse_id()
+        for sql in sorted(Path("sql").glob("demo_*.sql")):
+            for path in dbxapi.capture(client, wh, sql, args.out):
+                print(f"captured {path}")
 
 
 def _cmd_data(args: argparse.Namespace) -> None:
@@ -57,7 +78,7 @@ def _cmd_mvp(args: argparse.Namespace) -> None:
         print(f"{row.season}  {label}  {row.player_name}  score {row.score:.2f}")
 
 
-COMMANDS = {"data": _cmd_data, "fixture": _cmd_fixture, "elo": _cmd_elo, "mvp": _cmd_mvp}
+COMMANDS = {"data": _cmd_data, "fixture": _cmd_fixture, "elo": _cmd_elo, "mvp": _cmd_mvp, "dbx": _cmd_dbx}
 
 
 def main(argv: Sequence[str] | None = None) -> int:
