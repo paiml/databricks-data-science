@@ -86,3 +86,25 @@ def test_display_is_found_in_the_ipython_user_namespace(monkeypatch: pytest.Monk
     monkeypatch.setattr(builtins, "get_ipython", lambda: Shell(), raising=False)
     charts.show(charts.line_chart("ns", "x", "y", [(1, 1)]))
     assert seen == ["ns"]
+
+
+def test_namespace_display_beats_the_builtin(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    ns: list[str] = []
+    builtin: list[str] = []
+
+    class Shell:
+        user_ns = {"display": lambda fig: ns.append("ns")}
+
+    monkeypatch.setattr(builtins, "get_ipython", lambda: Shell(), raising=False)
+    monkeypatch.setattr(builtins, "display", lambda fig: builtin.append("builtin"), raising=False)
+    charts.show(charts.line_chart("p", "x", "y", [(1, 1)]))
+    assert (ns, builtin, capsys.readouterr().out) == (["ns"], [], "")
+
+
+def test_legends_and_ticks_carry_the_series_names() -> None:
+    _, grouped, _, _, calib = _all()
+    assert [t.get_text() for t in grouped.axes[0].get_legend().get_texts()] == ["real", "poisson"]
+    assert [t.get_text() for t in grouped.axes[0].get_xticklabels()] == ["0", "1"]
+    assert [t.get_text() for t in calib.axes[0].get_legend().get_texts()] == ["perfect", "model"]
