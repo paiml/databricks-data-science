@@ -19,6 +19,8 @@ CASES = [
     (6, "2020-01-02 00:00:00", 4, 2, 2, 0),
     (4, "2019-12-31 00:00:00", 5, 6, 1, 0),
     (10, "2020-01-01 00:00:00", 5, 6, 0, 2),  # a second same-day pair that shares no team with the others
+    (12, "2020-01-03 00:00:00", 1, 3, 2, 2),  # a date with exactly one repeat team (team 1 plays twice)
+    (11, "2020-01-03 00:00:00", 2, 1, 1, 0),
 ]
 
 

@@ -155,7 +155,7 @@ synthetic database (`tests/synth.py`). Numbers from the full database are in `te
 ### Courses 4 and 5: decisions to know about
 
 - **Elo without MAP.** `sql/elo_dbx.sql` replays one match day per recursion step with one state row per (parameter set,
-  team), so it is about 1,700 steps (plus one per extra same-day match of a repeat team) instead of 26,000 and has no MAP, no LATERAL and no DuckDB-only call. It equals
+  team), so it is about 1,700 steps (plus, on each date where a team plays twice, one step per match that day instead of one) instead of 26,000 and has no MAP, no LATERAL and no DuckDB-only call. It equals
   `eloplus.replay` to 1e-9. A date on which no team plays twice is one step; a date on which some team does is replayed one match per
   step in `match_api_id` order, the same tiebreak as `elo.py` (`tests/test_same_day.py` checks it on a double-header case). On the full database it took 6.3 s on `intel`, against 443.5 s for `sql/elo.sql`.
 - **Per-league MVP.** `mvpplus.score_leagues` ranks inside each league-season, so a player's starts are counted per league.

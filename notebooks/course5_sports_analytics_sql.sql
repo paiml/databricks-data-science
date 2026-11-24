@@ -41,12 +41,12 @@ LIMIT 5;
 
 -- Elo season-end ratings, Databricks-runnable form of sql/elo.sql (no MAP, no LATERAL, no DuckDB-only calls).
 -- Idea: the rating of a team only changes on a day it plays. Replay the calendar one DAY per recursion step,
--- carrying one row per (parameter set, team), so the recursion is about 1,700 steps (plus one per extra match on a date where a team plays twice) instead of 26,000 matches.
+-- carrying one row per (parameter set, team), so the recursion is about 1,700 steps (plus, on each date where a team plays twice, one step per match that day instead of one) instead of 26,000 matches.
 -- Same rules as src/dbx_ds/elo.py (date, then match_api_id): a date on which no team plays twice is one step; a date
 -- on which some team does is replayed one match per step in match_api_id order (tests/test_same_day.py checks it).
 -- Verified on DuckDB. Written for Databricks SQL (WITH RECURSIVE and window
 -- functions in the recursive step are in its documentation; NOT yet run there: raise its recursion-depth limit
--- to cover the number of replay steps (distinct match dates plus the extra matches of repeat teams) before running on the full data).
+-- to cover the number of replay steps (distinct match dates, and on a date where a team plays twice one step per match that day) before running on the full data).
 -- Several (k_factor, home_advantage) pairs may be listed in params: every pair is replayed in the same pass
 -- (the tuning loop in sql/demo_elo.sql, lesson 1.3.4, does that through the elo_params view).
 WITH RECURSIVE
@@ -63,7 +63,6 @@ raw AS (
   FROM Match
   WHERE home_team_goal IS NOT NULL AND away_team_goal IS NOT NULL
 ),
--- a date on which some team plays twice: its matches get one step each, in match_api_id order (as in elo.py)
 repeat_dates AS (
   SELECT DISTINCT date FROM (
     SELECT date, home AS team FROM raw UNION ALL SELECT date, away FROM raw
@@ -74,8 +73,9 @@ repeat_dates AS (
 played AS (
   SELECT
     match_api_id, season, home, away, actual_home,
-    dense_rank() OVER (ORDER BY date, CASE WHEN date IN (SELECT date FROM repeat_dates) THEN match_api_id ELSE 0 END) AS day
+    dense_rank() OVER (ORDER BY raw.date, CASE WHEN r.date IS NOT NULL THEN match_api_id ELSE 0 END) AS day
   FROM raw
+  LEFT JOIN repeat_dates r ON r.date = raw.date
 ),
 sides AS (
   SELECT match_api_id, season, day, home AS team, 1 AS is_home, actual_home AS actual FROM played
@@ -147,8 +147,9 @@ repeat_dates AS (
 ),
 played AS (
   SELECT match_api_id, league_id, season, home, away, actual_home,
-         dense_rank() OVER (ORDER BY date, CASE WHEN date IN (SELECT date FROM repeat_dates) THEN match_api_id ELSE 0 END) AS day
+         dense_rank() OVER (ORDER BY raw.date, CASE WHEN r.date IS NOT NULL THEN match_api_id ELSE 0 END) AS day
   FROM raw
+  LEFT JOIN repeat_dates r ON r.date = raw.date
 )
 SELECT match_api_id, league_id, season, day, home AS team, 1 AS is_home, actual_home AS actual FROM played
 UNION ALL

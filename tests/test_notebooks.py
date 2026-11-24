@@ -44,6 +44,12 @@ def test_sql_notebook_cells_run() -> None:
     assert con.execute("SELECT count(*) FROM mvp_scores").fetchone() == (649,)
 
 
+def test_sql_notebook_carries_the_standalone_elo_query() -> None:
+    flat = sqldemo.normalise((REPO / "notebooks" / "course5_sports_analytics_sql.sql").read_text())
+    ((_, standalone),) = sqldemo.parse((REPO / "sql" / "elo_dbx.sql").read_text())
+    assert sqldemo.normalise(standalone) in flat
+
+
 def test_sql_notebook_carries_every_demo_statement() -> None:
     flat = sqldemo.normalise((REPO / "notebooks" / "course5_sports_analytics_sql.sql").read_text())
     for name in ("c5_views.sql", "demo_elo.sql", "demo_mvp.sql", "demo_parity.sql"):

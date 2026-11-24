@@ -3,7 +3,7 @@
 -- Every view reads only Match, Player and Player_Attributes, so the cells run on a Databricks SQL warehouse once
 -- those three tables (or temp views over the Parquet files) exist. Verified on DuckDB; NOT yet run on Databricks.
 -- elo_state is a WITH RECURSIVE query: Databricks limits recursion depth, so raise that limit to cover the number
--- of replay steps (distinct match dates, about 1,700 on the full database, plus the extra matches of repeat teams) before running it there.
+-- of replay steps (distinct match dates, about 1,700 on the full database before the same-day fix; size it with SELECT max(day) FROM elo_sides) before running it there.
 
 -- 3.1.2 view elo_params: one row per (K, home bonus) pair; the tuning cell swaps in a grid of pairs
 CREATE OR REPLACE TEMP VIEW elo_params AS
@@ -29,8 +29,9 @@ repeat_dates AS (
 ),
 played AS (
   SELECT match_api_id, league_id, season, home, away, actual_home,
-         dense_rank() OVER (ORDER BY date, CASE WHEN date IN (SELECT date FROM repeat_dates) THEN match_api_id ELSE 0 END) AS day
+         dense_rank() OVER (ORDER BY raw.date, CASE WHEN r.date IS NOT NULL THEN match_api_id ELSE 0 END) AS day
   FROM raw
+  LEFT JOIN repeat_dates r ON r.date = raw.date
 )
 SELECT match_api_id, league_id, season, day, home AS team, 1 AS is_home, actual_home AS actual FROM played
 UNION ALL
