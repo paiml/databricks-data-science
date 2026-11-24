@@ -12,7 +12,7 @@ from pathlib import Path
 import duckdb
 import pytest
 
-from dbx_ds import course3, course4, data, eloplus, features, load, mvpplus, queries
+from dbx_ds import course3, course4, data, eloplus, features, load, mvpplus, queries, sqldemo
 from tests.conftest import REPO
 
 FULL = Path(os.environ.get("DBX_DS_FULL", REPO / "data" / "parquet"))
@@ -84,3 +84,29 @@ def test_sql_equals_python_on_the_full_data(con: duckdb.DuckDBPyConnection, anal
     course4.create_views(con)
     course4.register_python_tables(con, analysis)
     assert course4.parity_differences(con) == [0, 0]
+
+
+def test_current_elo_top_is_benfica_in_python_and_sql(
+    con: duckdb.DuckDBPyConnection, analysis: course4.Analysis
+) -> None:
+    """The course 4 and course 5 headline: Benfica is #1 at 1868.8, and both languages print the same table."""
+    top = course4.current_top(analysis)
+    assert top[0] == (1, "SL Benfica", 1868.8)
+    assert [t[1] for t in top[:3]] == ["SL Benfica", "FC Bayern Munich", "Juventus"]
+    course4.create_views(con)
+    sql = next(s for lbl, s in sqldemo.load("demo_elo.sql") if lbl.startswith("3.1.1 all leagues"))
+    assert [(p, n, r) for p, n, r in con.execute(sql).fetchall()] == top
+
+
+def test_report_mvp_and_adjacent_agree_across_languages(
+    con: duckdb.DuckDBPyConnection, analysis: course4.Analysis
+) -> None:
+    course4.create_views(con)
+    sql = next(s for lbl, s in sqldemo.load("demo_mvp.sql") if lbl.startswith("3.1.4"))
+    rows = con.execute(sql).fetchall()
+    league = course4.league_id(con)
+    card = course4.card_lines(analysis, league, "2015/2016")
+    assert [n for sec, _, n, _ in rows if sec == "mvp"][0] == card[0].split("MVP: ", 1)[1].split(" (")[0]
+    assert [n for sec, _, n, _ in rows if sec == "shortlist"] == [
+        ln.split(". ", 1)[1].split("  score rank")[0] for ln in card[1:]
+    ]

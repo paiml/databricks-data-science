@@ -105,3 +105,32 @@ def test_league_id_by_name_and_missing_name() -> None:
     assert course4.league_id(con, "Beta League") == 20
     with pytest.raises(KeyError, match="no league called"):
         course4.league_id(con, "Nowhere League")
+
+
+def _sql_statement(name: str, label_prefix: str) -> str:
+    return next(sql for label, sql in sqldemo.load(name) if label.startswith(label_prefix))
+
+
+def test_all_league_current_elo_sql_equals_python(world: tuple[duckdb.DuckDBPyConnection, course4.Analysis]) -> None:
+    con, analysis = world
+    sql = _sql_statement("demo_elo.sql", "3.1.1 all leagues")
+    rows = [(p, n, r) for p, n, r in con.execute(sql).fetchall()]
+    assert rows == course4.current_top(analysis)
+    assert course4.current_lines(analysis)[0] == f"1. {rows[0][1]}  {rows[0][2]}"
+
+
+def test_report_sql_equals_python_lines(world: tuple[duckdb.DuckDBPyConnection, course4.Analysis]) -> None:
+    """3.1.4: the SQL report and the Python report print the same teams, MVP and shortlist."""
+    con, analysis = world
+    try:
+        league = course4.league_id(con)
+    except KeyError:
+        pytest.skip("the synthetic world has no Premier League")
+    rows = con.execute(_sql_statement("demo_mvp.sql", "3.1.4")).fetchall()
+    names = {s: [name for sec, _, name, _ in rows if sec == s] for s in ("elo", "mvp", "shortlist")}
+    season = "2015/2016"
+    py_elo = [ln.split(". ", 1)[1].rsplit("  ", 1)[0] for ln in course4.elo_lines(analysis, league, season)]
+    py_card = course4.card_lines(analysis, league, season)
+    assert names["elo"] == py_elo
+    assert py_card[0].startswith(f"MVP: {names['mvp'][0]} (")
+    assert [ln.split(". ", 1)[1].split("  score rank")[0] for ln in py_card[1:]] == names["shortlist"]
