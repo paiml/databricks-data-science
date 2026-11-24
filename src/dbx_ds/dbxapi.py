@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import base64
 import configparser
+import http.client
 import json
 import os
 import re
@@ -17,6 +18,8 @@ import urllib.request
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
+
+from dbx_ds.sqlinline import standalone
 
 Transport = Callable[[str, str, Mapping[str, str], bytes | None], dict[str, Any]]
 
@@ -74,7 +77,7 @@ def urllib_transport(method: str, url: str, headers: Mapping[str, str], body: by
             return json.loads(resp.read() or b"{}")  # type: ignore[no-any-return]
     except urllib.error.HTTPError as exc:
         raise DbxError(f"HTTP {exc.code}: {_http_message(exc)}") from None
-    except (urllib.error.URLError, OSError, ValueError):
+    except (urllib.error.URLError, http.client.HTTPException, OSError, ValueError):
         raise DbxError("request failed (network error or invalid response)") from None
 
 
@@ -151,26 +154,35 @@ class Client:
         return {"statement": statement, "columns": cols, "rows": out.get("result", {}).get("data_array", [])}
 
 
+# A quoted run honours backslash escapes (Databricks reads \' inside '...'); '' still works as two adjacent runs.
 _TOKEN = re.compile(
-    r"(?P<c>--[^\n]*|/\*.*?\*/)|'[^']*'|\"[^\"]*\"|`[^`]*`|;|[^;'\"`/-]+|.",
+    r"(?P<c>--[^\n]*|/\*.*?\*/)|'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\"|`[^`]*`|;|[^;'\"`/-]+|.",
     re.DOTALL,
 )
 
 
 def split_statements(sql: str) -> list[str]:
     """Split on semicolons outside quotes; drop -- and /* */ comments and blanks."""
-    pieces = ("" if m.group("c") else "\0" if m.group() == ";" else m.group() for m in _TOKEN.finditer(sql))
+    pieces = (" " if m.group("c") else "\0" if m.group() == ";" else m.group() for m in _TOKEN.finditer(sql))
     parts = "".join(pieces).split("\0")
     return [p.strip() for p in parts if p.strip()]
 
 
 def capture(client: Client, warehouse: str, sql_file: Path, out_dir: Path) -> list[Path]:
-    """Run every statement of sql_file; write one JSON result table per statement."""
+    """Run every statement of sql_file on its own; write one JSON result table per statement.
+
+    Files are numbered by statement position, so a CREATE VIEW (folded into later statements, never sent) leaves a gap.
+    sql/c5_views.sql beside the file supplies the views the demo statements read.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     for stale in out_dir.glob(f"{sql_file.stem}.[0-9][0-9].json"):
         stale.unlink()
+    views = sql_file.with_name("c5_views.sql")
+    setup = split_statements(views.read_text()) if views.exists() and views != sql_file else []
     written = []
-    for i, stmt in enumerate(split_statements(sql_file.read_text()), 1):
+    for i, stmt in enumerate(standalone(split_statements(sql_file.read_text()), setup), 1):
+        if stmt is None:
+            continue
         path = out_dir / f"{sql_file.stem}.{i:02d}.json"
         path.write_text(json.dumps(client.run_sql(warehouse, stmt), indent=2) + "\n")
         written.append(path)

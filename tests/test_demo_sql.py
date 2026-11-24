@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from dbx_ds import data, report, sqldemo
+from dbx_ds import cli, data, dbxapi, report, sqldemo, sqlinline
 from tests.conftest import FIXTURE, REPO
 
 
@@ -42,3 +42,37 @@ def test_report_show_truncates(capsys: pytest.CaptureFixture[str]) -> None:
     assert "... 25 more rows" in out
     report.show(con, "SELECT 1 AS one")
     assert "more rows" not in capsys.readouterr().out
+
+
+def _stable(row: tuple[object, ...]) -> str:
+    """Row text with floats cut to 9 places: a parallel sum may differ in the last bits between runs."""
+    return repr(tuple(round(v, 9) if isinstance(v, float) else v for v in row))
+
+
+STANDALONE = ["demo_elo.sql", "demo_mvp.sql", "demo_course1.sql", "demo_stats.sql", "demo_features.sql"]
+
+
+@pytest.mark.parametrize("name", STANDALONE)
+def test_every_captured_statement_runs_alone_and_matches_the_session(name: str) -> None:
+    """Each statement the capture sends works on a fresh connection (no view from another call) and agrees
+    with the same statement run in one session that created the views."""
+    sql_dir = REPO / "sql"
+    setup = dbxapi.split_statements((sql_dir / "c5_views.sql").read_text())
+    statements = dbxapi.split_statements((sql_dir / name).read_text())
+    session = data.connect(FIXTURE)
+    for stmt in setup:
+        session.execute(stmt)
+    checked = 0
+    for stmt, alone in zip(statements, sqlinline.standalone(statements, setup), strict=True):
+        expected = session.execute(stmt).fetchall()
+        if alone is None:
+            continue
+        got = data.connect(FIXTURE).execute(alone).fetchall()
+        assert sorted(map(_stable, got)) == sorted(map(_stable, expected)), alone[:200]
+        checked += 1
+    assert checked
+
+
+def test_parity_is_the_only_demo_file_left_out_of_capture() -> None:
+    demos = {p.name for p in (REPO / "sql").glob("demo_*.sql")}
+    assert demos - set(STANDALONE) == cli.NOT_ON_DATABRICKS == {"demo_parity.sql"}
