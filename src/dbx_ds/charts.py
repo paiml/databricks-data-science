@@ -10,6 +10,7 @@ import builtins
 import hashlib
 import io
 from collections.abc import Callable, Sequence
+from typing import Any
 
 import matplotlib
 
@@ -18,7 +19,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.axes import Axes  # noqa: E402
 from matplotlib.figure import Figure  # noqa: E402
 
-_STYLE = {"svg.hashsalt": "dbx-ds", "svg.fonttype": "none", "figure.figsize": (6.0, 3.6)}
+_STYLE: dict[Any, Any] = {"svg.hashsalt": "dbx-ds", "svg.fonttype": "none", "figure.figsize": (6.0, 3.6)}
 
 
 def _figure(title: str, xlabel: str, ylabel: str) -> tuple[Figure, Axes]:
