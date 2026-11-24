@@ -58,8 +58,9 @@ Kaggle licence line: "Database: Open Database, Contents: (c) Original Authors"
 
 This directory is a Derivative Database: one league (England Premier League), two seasons
 (2014/2015, 2015/2016), and for Player_Attributes only the columns id, player_api_id, date,
-overall_rating, potential, finishing, sprint_speed and reactions. It is redistributed under the ODbL 1.0 (share-alike): keep this notice and the
-licence URL with any copy, and offer the same licence to anything you derive from it (ODbL 4.2).
+overall_rating, potential, finishing, sprint_speed and reactions. It is redistributed under the ODbL 1.0 (share-alike): keep
+this notice and the licence URL with any copy, and offer the same licence to anything you
+derive from it (ODbL 4.2).
 
 SYNTHETIC RATINGS: Player_Attributes.overall_rating (and potential, finishing, sprint_speed, reactions) in
 this fixture is NOT the real FIFA value.
