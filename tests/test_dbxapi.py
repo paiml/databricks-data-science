@@ -231,7 +231,6 @@ def test_transport_incomplete_read(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_standalone_inlines_views_and_tracks_redefinition() -> None:
     setup = [
-        "SET spark.sql.ansi.enabled = true",
         "CREATE OR REPLACE TEMP VIEW a AS SELECT 1 AS x",
         "CREATE TEMPORARY VIEW b AS WITH r AS (SELECT x FROM a) SELECT x FROM r",
     ]
@@ -267,3 +266,14 @@ def test_capture_sends_standalone_statements(tmp_path: Path) -> None:
     ]
     own = tmp_path / "c5_views.sql"
     assert dbxapi.capture(dbxapi.Client("https://h", "t", Fake([])), "w", own, tmp_path / "o2") == []
+
+
+def test_standalone_refuses_what_it_cannot_carry() -> None:
+    view = "CREATE TEMP VIEW a AS SELECT 'a' AS x"
+    with pytest.raises(ValueError, match="would be lost"):
+        sqlinline.standalone(["SELECT 1"], ["SET x = 1"])
+    with pytest.raises(ValueError, match="non-query"):
+        sqlinline.standalone(["DESCRIBE a"], [view])
+    with pytest.raises(ValueError, match="named like the view"):
+        sqlinline.standalone(["WITH a AS (SELECT 1) SELECT * FROM a"], [view])
+    assert sqlinline.standalone(["SELECT 'a' AS lit, 1"], [view]) == ["SELECT 'a' AS lit, 1"]
