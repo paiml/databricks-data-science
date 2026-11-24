@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from dbx_ds import data, elo, queries
+from dbx_ds import data, dbxapi, elo, queries
 
 DEFAULT_RAW = Path("data/raw/database.sqlite")
 DEFAULT_PARQUET = Path("data/parquet")
@@ -22,7 +23,43 @@ def build_parser() -> argparse.ArgumentParser:
         cmd = sub.add_parser(name, help=f"print the {name} table")
         cmd.add_argument("--data-dir", type=Path, default=DEFAULT_FIXTURE)
         cmd.add_argument("--top", type=int, default=10)
+    dbx = sub.add_parser("dbx", help="drive a Databricks workspace over the REST API")
+    dbx.add_argument("action", choices=["whoami", "import", "capture"])
+    dbx.add_argument("--profile", default="DEFAULT")
+    dbx.add_argument("--cfg", type=Path, default=Path.home() / ".databrickscfg")
+    dbx.add_argument("--remote-dir", default="/Shared/dbx-ds")
+    dbx.add_argument("--out", type=Path, default=Path("captures"))
     return parser
+
+
+def _import_all(client: dbxapi.Client, remote_dir: str) -> None:
+    notebooks = sorted(nb for nb in Path("notebooks").glob("course*") if nb.suffix in dbxapi.LANGUAGES)
+    stems = [nb.stem for nb in notebooks]
+    if len(stems) != len(set(stems)):
+        raise SystemExit("dbx import: two notebooks share a stem and would overwrite each other")
+    if not notebooks:
+        raise SystemExit("dbx import: no notebooks/course*.py or .sql found (run from the repo root)")
+    client.mkdirs(remote_dir)
+    for nb in notebooks:
+        client.import_notebook(nb, f"{remote_dir}/{nb.stem}")
+        print(f"imported {nb.name}")
+
+
+def _capture_all(client: dbxapi.Client, out: Path) -> None:
+    wh = client.warehouse_id()
+    for sql in sorted(Path("sql").glob("demo_*.sql")):
+        for path in dbxapi.capture(client, wh, sql, out):
+            print(f"captured {path}")
+
+
+def _cmd_dbx(args: argparse.Namespace) -> None:
+    client = dbxapi.Client(*dbxapi.load_auth(args.cfg, args.profile))
+    if args.action == "whoami":
+        print(f"auth OK: {client.whoami()}")
+    elif args.action == "import":
+        _import_all(client, args.remote_dir)
+    else:
+        _capture_all(client, args.out)
 
 
 def _cmd_data(args: argparse.Namespace) -> None:
@@ -57,10 +94,14 @@ def _cmd_mvp(args: argparse.Namespace) -> None:
         print(f"{row.season}  {label}  {row.player_name}  score {row.score:.2f}")
 
 
-COMMANDS = {"data": _cmd_data, "fixture": _cmd_fixture, "elo": _cmd_elo, "mvp": _cmd_mvp}
+COMMANDS = {"data": _cmd_data, "fixture": _cmd_fixture, "elo": _cmd_elo, "mvp": _cmd_mvp, "dbx": _cmd_dbx}
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    COMMANDS[args.command](args)
+    try:
+        COMMANDS[args.command](args)
+    except dbxapi.DbxError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
     return 0
