@@ -95,7 +95,7 @@ def test_current_elo_top_is_benfica_in_python_and_sql(
     assert [t[1] for t in top[:3]] == ["SL Benfica", "FC Bayern Munich", "Juventus"]
     course4.create_views(con)
     sql = next(s for lbl, s in sqldemo.load("demo_elo.sql") if lbl.startswith("3.1.1 all leagues"))
-    assert [(p, n, r) for p, n, r in con.execute(sql).fetchall()] == top
+    assert con.execute(sql).fetchall() == top
 
 
 def test_report_mvp_and_adjacent_agree_across_languages(

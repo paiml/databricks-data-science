@@ -114,7 +114,7 @@ def _sql_statement(name: str, label_prefix: str) -> str:
 def test_all_league_current_elo_sql_equals_python(world: tuple[duckdb.DuckDBPyConnection, course4.Analysis]) -> None:
     con, analysis = world
     sql = _sql_statement("demo_elo.sql", "3.1.1 all leagues")
-    rows = [(p, n, r) for p, n, r in con.execute(sql).fetchall()]
+    rows = con.execute(sql).fetchall()
     assert rows == course4.current_top(analysis)
     assert course4.current_lines(analysis)[0] == f"1. {rows[0][1]}  {rows[0][2]}"
 
@@ -132,5 +132,6 @@ def test_report_sql_equals_python_lines(world: tuple[duckdb.DuckDBPyConnection, 
     py_elo = [ln.split(". ", 1)[1].rsplit("  ", 1)[0] for ln in course4.elo_lines(analysis, league, season)]
     py_card = course4.card_lines(analysis, league, season)
     assert names["elo"] == py_elo
+    assert len(names["mvp"]) == 1 and len(names["elo"]) == 5
     assert py_card[0].startswith(f"MVP: {names['mvp'][0]} (")
     assert [ln.split(". ", 1)[1].split("  score rank")[0] for ln in py_card[1:]] == names["shortlist"]
