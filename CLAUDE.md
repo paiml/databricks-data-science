@@ -7,3 +7,5 @@ Demo repo for the Data Science on Databricks specialization (5 courses). One dat
 - `sql/elo.sql` and `sql/mvp.sql` must equal the Python (tests/test_parity.py). Change one, change both.
 - `make gate` before every push. Main is protected; work on a branch and open a PR.
 - Never commit `data/raw` or `data/parquet` (full database). The fixture in `data/fixture` is the only data committed.
+
+Contract-first: design each change against its provable contract before writing code; `pmat comply check` must pass (CB-1400).
