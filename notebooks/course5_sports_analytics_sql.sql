@@ -41,12 +41,12 @@ LIMIT 5;
 
 -- Elo season-end ratings, Databricks-runnable form of sql/elo.sql (no MAP, no LATERAL, no DuckDB-only calls).
 -- Idea: the rating of a team only changes on a day it plays. Replay the calendar one DAY per recursion step,
--- carrying one row per (parameter set, team), so the recursion is about 1,700 steps instead of 26,000 matches.
+-- carrying one row per (parameter set, team), so the recursion is about 1,700 steps (plus one per extra match on a date where a team plays twice) instead of 26,000 matches.
 -- Same rules as src/dbx_ds/elo.py (date, then match_api_id): a date on which no team plays twice is one step; a date
 -- on which some team does is replayed one match per step in match_api_id order (tests/test_same_day.py checks it).
 -- Verified on DuckDB. Written for Databricks SQL (WITH RECURSIVE and window
 -- functions in the recursive step are in its documentation; NOT yet run there: raise its recursion-depth limit
--- to cover the number of distinct match dates before running on the full data).
+-- to cover the number of replay steps (distinct match dates plus the extra matches of repeat teams) before running on the full data).
 -- Several (k_factor, home_advantage) pairs may be listed in params: every pair is replayed in the same pass
 -- (the tuning loop in sql/demo_elo.sql, lesson 1.3.4, does that through the elo_params view).
 WITH RECURSIVE
@@ -376,7 +376,7 @@ FROM ranked CROSS JOIN params p;
 
 -- MAGIC %md
 -- MAGIC ### Elo and MVP in SQL alone
--- MAGIC Course 4 computes both in Python. Elo ran in SQL above (standalone query and the `elo_season` view, checked in 1.2.5).
+-- MAGIC Course 4 computes both in Python. Elo ran in SQL above (standalone query and the `elo_season` view; the 1.2.5 checks below test it).
 -- MAGIC This cell checks the MVP table by itself, with no Python tables: every league-season has exactly one MVP.
 
 -- COMMAND ----------
@@ -430,7 +430,11 @@ FROM elo_season;
 -- COMMAND ----------
 
 -- 1.2.5 check 5 of 5: how many team-dates have a team playing twice; those dates replay one match per step, so day-by-day equals match-by-match
-SELECT count(*) AS teams_twice_on_one_day FROM (SELECT team, day FROM elo_sides GROUP BY team, day HAVING count(*) > 1) d;
+SELECT count(*) AS team_dates_with_two_matches
+FROM (SELECT team, date FROM (SELECT home_team_api_id AS team, date FROM Match WHERE home_team_goal IS NOT NULL AND away_team_goal IS NOT NULL
+                              UNION ALL
+                              SELECT away_team_api_id, date FROM Match WHERE home_team_goal IS NOT NULL AND away_team_goal IS NOT NULL) t
+      GROUP BY team, date HAVING count(*) > 1) d;
 
 -- COMMAND ----------
 

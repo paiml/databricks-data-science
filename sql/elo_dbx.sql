@@ -1,11 +1,11 @@
 -- Elo season-end ratings, Databricks-runnable form of sql/elo.sql (no MAP, no LATERAL, no DuckDB-only calls).
 -- Idea: the rating of a team only changes on a day it plays. Replay the calendar one DAY per recursion step,
--- carrying one row per (parameter set, team), so the recursion is about 1,700 steps instead of 26,000 matches.
+-- carrying one row per (parameter set, team), so the recursion is about 1,700 steps (plus one per extra match on a date where a team plays twice) instead of 26,000 matches.
 -- Same rules as src/dbx_ds/elo.py (date, then match_api_id): a date on which no team plays twice is one step; a date
 -- on which some team does is replayed one match per step in match_api_id order (tests/test_same_day.py checks it).
 -- Verified on DuckDB. Written for Databricks SQL (WITH RECURSIVE and window
 -- functions in the recursive step are in its documentation; NOT yet run there: raise its recursion-depth limit
--- to cover the number of distinct match dates before running on the full data).
+-- to cover the number of replay steps (distinct match dates plus the extra matches of repeat teams) before running on the full data).
 -- Several (k_factor, home_advantage) pairs may be listed in params: every pair is replayed in the same pass
 -- (the tuning loop in sql/demo_elo.sql, lesson 1.3.4, does that through the elo_params view).
 WITH RECURSIVE

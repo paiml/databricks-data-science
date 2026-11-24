@@ -102,10 +102,10 @@ score = 0.7 * rating + 0.3 * win_share
 the Python output (ratings to 1e-9, ranks and flags exactly); `tests/test_c5_sql.py` and `tests/test_same_day.py` do the
 same for `sql/elo_dbx.sql` and the Course 5 views, including a team playing twice on one date.
 
-**Not yet run on Databricks SQL itself.** Every SQL file is verified on DuckDB only, and the header of each says so. A
+**Not yet run on Databricks SQL itself.** The SQL is verified on DuckDB only. A
 SQLite parity run is not possible: SQLite refuses window functions in the recursive step that `sql/elo_dbx.sql` and the
 `elo_state` view need, and has no MAP for `sql/elo.sql`. Before the first Databricks run, raise its recursion-depth limit
-to cover the number of distinct match dates, then run `sql/demo_parity.sql` against Python tables written to the
+to cover the number of replay steps (`max(day)` of `elo_sides`), then run `sql/demo_parity.sql` against Python tables written to the
 warehouse. See `CHANGELOG.md`.
 
 ## Databricks Free Edition: upload path
@@ -155,7 +155,7 @@ synthetic database (`tests/synth.py`). Numbers from the full database are in `te
 ### Courses 4 and 5: decisions to know about
 
 - **Elo without MAP.** `sql/elo_dbx.sql` replays one match day per recursion step with one state row per (parameter set,
-  team), so it is about 1,700 steps instead of 26,000 and has no MAP, no LATERAL and no DuckDB-only call. It equals
+  team), so it is about 1,700 steps (plus one per extra same-day match of a repeat team) instead of 26,000 and has no MAP, no LATERAL and no DuckDB-only call. It equals
   `eloplus.replay` to 1e-9. A date on which no team plays twice is one step; a date on which some team does is replayed one match per
   step in `match_api_id` order, the same tiebreak as `elo.py` (`tests/test_same_day.py` checks it on a double-header case). On the full database it took 6.3 s on `intel`, against 443.5 s for `sql/elo.sql`.
 - **Per-league MVP.** `mvpplus.score_leagues` ranks inside each league-season, so a player's starts are counted per league.
@@ -168,6 +168,6 @@ synthetic database (`tests/synth.py`). Numbers from the full database are in `te
 - **Python against SQL.** `src/dbx_ds/course4.py` writes `py_elo` and `py_mvp`; `sql/demo_parity.sql` counts differing rows (0).
   The views are plain `TEMP VIEW`s: on the full database make them tables first, as each query re-runs the recursion.
 - **Not run on Databricks.** Everything is verified on DuckDB only (fixture, a seeded multi-league database, and the full database
-  on `intel`). The recursion-depth limit of Databricks SQL must cover the number of distinct match dates before the Elo is run on the full data.
+  on `intel`). The recursion-depth limit of Databricks SQL must cover the number of replay steps (`max(day)` of `elo_sides`) before the Elo is run on the full data.
 - Full-database numbers: `tests/test_full_data_c45.py`. The c3 baseline log loss check is `course3.baseline_log_losses`.
 
