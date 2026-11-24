@@ -45,9 +45,15 @@ def _import_all(client: dbxapi.Client, remote_dir: str) -> None:
         print(f"imported {nb.name}")
 
 
+# demo_parity.sql full-joins the Python tables py_elo and py_mvp, which exist only in a local DuckDB session.
+NOT_ON_DATABRICKS = {"demo_parity.sql"}
+
+
 def _capture_all(client: dbxapi.Client, out: Path) -> None:
     wh = client.warehouse_id()
     for sql in sorted(Path("sql").glob("demo_*.sql")):
+        if sql.name in NOT_ON_DATABRICKS:
+            continue
         for path in dbxapi.capture(client, wh, sql, out):
             print(f"captured {path}")
 
