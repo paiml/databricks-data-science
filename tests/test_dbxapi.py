@@ -244,13 +244,39 @@ def test_standalone_inlines_views_and_tracks_redefinition() -> None:
     assert out[1] is None and out[3] == "SELECT 3"
     first, third = out[0] or "", out[2] or ""
     assert first.startswith("WITH a AS (\nSELECT 1 AS x\n),\nb AS (") and first.endswith("SELECT * FROM b")
-    assert "SELECT 2 AS x" in third and third.startswith("WITH RECURSIVE a AS (") and ",\nq AS (SELECT" in third
+    assert "SELECT 2 AS x" in third and third.startswith("WITH a AS (") and "\n) q" in third
 
 
-def test_standalone_survives_a_view_cycle() -> None:
+def test_standalone_view_cycle_raises() -> None:
     cyc = ["CREATE TEMP VIEW a AS SELECT * FROM b", "CREATE TEMP VIEW b AS SELECT * FROM a"]
-    out = sqlinline.standalone(["SELECT * FROM a"], cyc)
-    assert out[0] is not None and out[0].count(" AS (") == 2
+    with pytest.raises(ValueError, match="reads itself"):
+        sqlinline.standalone(["SELECT * FROM a"], cyc)
+
+
+def test_standalone_refuses_session_statements_and_unparsed_views() -> None:
+    for stmt in ("SET x = 1", "USE foo", "CREATE VIEW v AS SELECT 1", "CREATE TEMP VIEW IF NOT EXISTS v AS SELECT 1"):
+        with pytest.raises(ValueError, match="would be lost"):
+            sqlinline.standalone([stmt])
+
+
+def test_recursive_statement_is_nested_not_merged() -> None:
+    out = sqlinline.standalone(
+        ["WITH RECURSIVE r AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM r WHERE n < 3) SELECT * FROM r, v"],
+        ["CREATE TEMP VIEW v AS SELECT 1 AS m"],
+    )
+    assert (out[0] or "").startswith("WITH v AS (\nSELECT 1 AS m\n)\nSELECT * FROM (\nWITH RECURSIVE r")
+
+
+def test_capture_refuses_before_deleting_or_sending(tmp_path: Path) -> None:
+    out = tmp_path / "o"
+    out.mkdir()
+    (out / "demo_x.01.json").write_text("{}")
+    sql = tmp_path / "demo_x.sql"
+    sql.write_text("SET x = 1")
+    f = Fake([])
+    with pytest.raises(dbxapi.DbxError, match="demo_x.sql: statement changes"):
+        dbxapi.capture(dbxapi.Client("https://h", "t", f), "w", sql, out)
+    assert (out / "demo_x.01.json").exists() and not f.calls
 
 
 def test_capture_sends_standalone_statements(tmp_path: Path) -> None:

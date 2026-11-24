@@ -174,13 +174,17 @@ def capture(client: Client, warehouse: str, sql_file: Path, out_dir: Path) -> li
     Files are numbered by statement position, so a CREATE VIEW (folded into later statements, never sent) leaves a gap.
     sql/c5_views.sql beside the file supplies the views the demo statements read.
     """
+    views = sql_file.with_name("c5_views.sql")
+    setup = split_statements(views.read_text()) if views.exists() and views != sql_file else []
+    try:
+        plan = standalone(split_statements(sql_file.read_text()), setup)
+    except ValueError as exc:  # before anything is deleted or sent
+        raise DbxError(f"{sql_file.name}: {exc}") from None
     out_dir.mkdir(parents=True, exist_ok=True)
     for stale in out_dir.glob(f"{sql_file.stem}.[0-9][0-9].json"):
         stale.unlink()
-    views = sql_file.with_name("c5_views.sql")
-    setup = split_statements(views.read_text()) if views.exists() and views != sql_file else []
     written = []
-    for i, stmt in enumerate(standalone(split_statements(sql_file.read_text()), setup), 1):
+    for i, stmt in enumerate(plan, 1):
         if stmt is None:
             continue
         path = out_dir / f"{sql_file.stem}.{i:02d}.json"

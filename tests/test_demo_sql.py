@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import duckdb
 import pytest
 
 from dbx_ds import cli, data, dbxapi, report, sqldemo, sqlinline
@@ -62,7 +63,7 @@ def test_every_captured_statement_runs_alone_and_matches_the_session(name: str) 
     session = data.connect(FIXTURE)
     for stmt in setup:
         session.execute(stmt)
-    checked = 0
+    checked = rows = 0
     for stmt, alone in zip(statements, sqlinline.standalone(statements, setup), strict=True):
         expected = session.execute(stmt).fetchall()
         if alone is None:
@@ -70,9 +71,16 @@ def test_every_captured_statement_runs_alone_and_matches_the_session(name: str) 
         got = data.connect(FIXTURE).execute(alone).fetchall()
         assert sorted(map(_stable, got)) == sorted(map(_stable, expected)), alone[:200]
         checked += 1
-    assert checked
+        rows += len(expected)
+    assert checked and rows
 
 
 def test_parity_is_the_only_demo_file_left_out_of_capture() -> None:
     demos = {p.name for p in (REPO / "sql").glob("demo_*.sql")}
     assert demos - set(STANDALONE) == cli.NOT_ON_DATABRICKS == {"demo_parity.sql"}
+
+
+def test_fresh_connection_has_no_views() -> None:
+    """The premise of the standalone test: nothing but the base tables exists until a statement brings its own."""
+    with pytest.raises(duckdb.CatalogException):
+        data.connect(FIXTURE).execute("SELECT * FROM elo_season")
