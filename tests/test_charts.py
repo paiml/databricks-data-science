@@ -15,6 +15,15 @@ from dbx_ds import charts
 BINS = [(0.0, 0.1, 0.2, 5), (0.5, 0.55, 0.5, 9)]
 
 
+EXPECTED_LABELS = [
+    ("x", "y"),
+    ("k", "share"),
+    ("rest", "rate"),
+    ("a", "b"),
+    ("mean predicted probability", "observed rate"),
+]
+
+
 def _all() -> list[Figure]:
     return [
         charts.line_chart("t1", "x", "y", [(10, 0.4), (20, 0.5)]),
@@ -29,7 +38,7 @@ def test_every_builder_has_a_title_and_labelled_axes() -> None:
     for i, fig in enumerate(_all(), start=1):
         ax = fig.axes[0]
         assert ax.get_title() == f"t{i}"
-        assert ax.get_xlabel() and ax.get_ylabel()
+        assert (ax.get_xlabel(), ax.get_ylabel()) == EXPECTED_LABELS[i - 1]
         charts.svg(fig)
 
 
@@ -38,6 +47,7 @@ def test_svg_is_byte_identical_for_equal_data() -> None:
     b = charts.svg(charts.scatter_chart("t", "a", "b", [(1, 2), (3, 4)]))
     assert a == b
     assert a.startswith(b"<?xml") and b"<svg" in a
+    assert b"<dc:date>" not in a
 
 
 def test_show_prints_a_receipt_without_display(capsys: pytest.CaptureFixture[str]) -> None:
@@ -108,3 +118,9 @@ def test_legends_and_ticks_carry_the_series_names() -> None:
     assert [t.get_text() for t in grouped.axes[0].get_legend().get_texts()] == ["real", "poisson"]
     assert [t.get_text() for t in grouped.axes[0].get_xticklabels()] == ["0", "1"]
     assert [t.get_text() for t in calib.axes[0].get_legend().get_texts()] == ["perfect", "model"]
+
+
+def test_grouped_bar_ticks_sit_at_the_middle_of_each_pair() -> None:
+    ax = _all()[1].axes[0]
+    xs = [p.get_x() + p.get_width() / 2 for p in ax.patches]
+    assert ax.get_xticks().tolist() == pytest.approx([(xs[0] + xs[2]) / 2, (xs[1] + xs[3]) / 2])
