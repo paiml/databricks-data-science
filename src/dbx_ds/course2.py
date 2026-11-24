@@ -260,12 +260,12 @@ def attribute_correlations(con: duckdb.DuckDBPyConnection) -> list[tuple[str, st
 
 
 def scatter_sample(
-    con: duckdb.DuckDBPyConnection, x: str, y: str, k: int = 500, seed: int = 11
+    con: duckdb.DuckDBPyConnection, x: str, y: str, k: int = 500, seed: int = 11, table: str = "Player_Attributes"
 ) -> list[tuple[float, float]]:
-    """2.3.2: a seeded sample of (x, y) points from Player_Attributes for a scatter chart."""
-    rows = con.execute(
-        f"SELECT {x}, {y} FROM Player_Attributes WHERE {x} IS NOT NULL AND {y} IS NOT NULL ORDER BY id"
-    ).fetchall()
+    """2.3.2: a seeded sample of (x, y) points from `table` (Player_Attributes or Player) for a scatter chart."""
+    order = "id" if table == "Player_Attributes" else f"{x}, {y}"
+    sql = f"SELECT {x}, {y} FROM {table} WHERE {x} IS NOT NULL AND {y} IS NOT NULL ORDER BY {order}"
+    rows = con.execute(sql).fetchall()
     return [(float(a), float(b)) for a, b in random.Random(seed).sample(rows, min(k, len(rows)))]
 
 
