@@ -1,6 +1,7 @@
 import io
 import json
 import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -105,9 +106,9 @@ class Resp(io.BytesIO):
 
 
 def test_urllib_transport(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("urllib.request.urlopen", lambda req, timeout: Resp(b'{"a": 1}'))
+    monkeypatch.setattr(dbxapi._OPENER, "open", lambda req, timeout: Resp(b'{"a": 1}'))
     assert dbxapi.urllib_transport("GET", "https://h", {}, None) == {"a": 1}
-    monkeypatch.setattr("urllib.request.urlopen", lambda req, timeout: Resp(b""))
+    monkeypatch.setattr(dbxapi._OPENER, "open", lambda req, timeout: Resp(b""))
     assert dbxapi.urllib_transport("GET", "https://h", {}, None) == {}
 
     def boom(body: bytes) -> Any:
@@ -116,12 +117,69 @@ def test_urllib_transport(monkeypatch: pytest.MonkeyPatch) -> None:
 
         return _raise
 
-    monkeypatch.setattr("urllib.request.urlopen", boom(b'{"message": "Invalid access token"}'))
+    monkeypatch.setattr(dbxapi._OPENER, "open", boom(b'{"message": "Invalid access token"}'))
     with pytest.raises(dbxapi.DbxError, match="HTTP 403: Invalid access token"):
         dbxapi.urllib_transport("GET", "https://h", {}, None)
-    monkeypatch.setattr("urllib.request.urlopen", boom(b"not json"))
+    monkeypatch.setattr(dbxapi._OPENER, "open", boom(b"not json"))
     with pytest.raises(dbxapi.DbxError, match="HTTP 403: $"):
         dbxapi.urllib_transport("GET", "https://h", {}, None)
+    monkeypatch.setattr(dbxapi._OPENER, "open", boom(b"[1]"))
+    with pytest.raises(dbxapi.DbxError, match="HTTP 403: $"):
+        dbxapi.urllib_transport("GET", "https://h", {}, None)
+
+    def down(req: Any, timeout: int) -> None:
+        raise urllib.error.URLError("dns")
+
+    monkeypatch.setattr(dbxapi._OPENER, "open", down)
+    with pytest.raises(dbxapi.DbxError, match="request failed"):
+        dbxapi.urllib_transport("GET", "https://h", {}, None)
+    monkeypatch.setattr(dbxapi._OPENER, "open", lambda req, timeout: Resp(b"<html>"))
+    with pytest.raises(dbxapi.DbxError, match="request failed"):
+        dbxapi.urllib_transport("GET", "https://h", {}, None)
+
+
+def test_no_redirect() -> None:
+    handler = dbxapi._NoRedirect()
+    req = urllib.request.Request("https://h/a")
+    assert handler.redirect_request(req, None, 302, "Found", {}, "https://evil/") is None
+
+
+def test_load_auth_hardening(tmp_path: Path) -> None:
+    with pytest.raises(dbxapi.DbxError, match="https"):
+        dbxapi.load_auth(tmp_path / "x", "p", {"DATABRICKS_HOST": "http://h", "DATABRICKS_TOKEN": "t"})
+    cfg = tmp_path / "cfg"
+    cfg.write_text("[DEFAULT]\nhost = https://d\ntoken = 100%\n[other]\nhost = https://o\n")
+    assert dbxapi.load_auth(cfg, "DEFAULT", {}) == ("https://d", "100%")
+    with pytest.raises(dbxapi.DbxError, match="needs host"):
+        dbxapi.load_auth(cfg, "other", {})
+
+
+def test_run_sql_deadline_and_chunks() -> None:
+    pending = {"statement_id": "a/b", "status": {"state": "RUNNING"}}
+    f = Fake([pending, pending, {}])
+    with pytest.raises(dbxapi.DbxError, match="cancelled"):
+        dbxapi.Client("https://h", "t", f).run_sql("w", "x", sleep=lambda s: None, max_polls=1)
+    assert f.calls[1][1].endswith("/statements/a%2Fb") and f.calls[2][1].endswith("/statements/a%2Fb/cancel")
+    chunked = ok(["n"], [["1"]])
+    chunked["manifest"]["total_chunk_count"] = 2
+    with pytest.raises(dbxapi.DbxError, match="chunked"):
+        dbxapi.Client("https://h", "t", Fake([chunked])).run_sql("w", "x")
+
+
+def test_split_comments() -> None:
+    sql = "select 1; -- don't\nselect /* a;b */ 2 / 1 - 1; select 'it''s';"
+    assert dbxapi.split_statements(sql) == ["select 1", "select  2 / 1 - 1", "select 'it''s'"]
+
+
+def test_capture_removes_stale(tmp_path: Path) -> None:
+    out = tmp_path / "o"
+    out.mkdir()
+    (out / "demo_x.05.json").write_text("{}")
+    (out / "demo_y.01.json").write_text("{}")
+    sql = tmp_path / "demo_x.sql"
+    sql.write_text("select 1")
+    dbxapi.capture(dbxapi.Client("https://h", "t", Fake([ok(["a"], [["1"]])])), "w", sql, out)
+    assert not (out / "demo_x.05.json").exists() and (out / "demo_y.01.json").exists()
 
 
 def test_cli_dbx(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -132,7 +190,7 @@ def test_cli_dbx(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest
     (tmp_path / "sql").mkdir()
     (tmp_path / "sql" / "demo_a.sql").write_text("select 1")
     monkeypatch.chdir(tmp_path)
-    f = Fake([{"userName": "me"}, {}, {"warehouses": [{"id": "w"}]}, ok(["a"], [["1"]])])
+    f = Fake([{"userName": "me"}, {}, {}, {"warehouses": [{"id": "w"}]}, ok(["a"], [["1"]])])
     monkeypatch.setattr(dbxapi, "urllib_transport", f)
     monkeypatch.setattr(dbxapi.Client.__init__, "__defaults__", (f,))
     base = ["dbx", "--profile", "p", "--cfg", str(cfg)]
@@ -142,3 +200,13 @@ def test_cli_dbx(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest
     out = capsys.readouterr().out
     assert "auth OK: me" in out and "imported course1_a.py" in out and "captured o/demo_a.01.json" in out
     assert "SECRET" not in out
+    (tmp_path / "notebooks" / "course1_a.sql").write_text("x")
+    with pytest.raises(SystemExit, match="share a stem"):
+        cli.main([*base, "import"])
+    (tmp_path / "notebooks" / "course1_a.sql").unlink()
+    (tmp_path / "notebooks" / "course1_a.py").unlink()
+    with pytest.raises(SystemExit, match="no notebooks"):
+        cli.main([*base, "import"])
+    monkeypatch.setattr(dbxapi.Client.__init__, "__defaults__", (Fake([{"warehouses": []}]),))
+    assert cli.main([*base, "capture"]) == 1
+    assert "no SQL warehouse" in capsys.readouterr().err
