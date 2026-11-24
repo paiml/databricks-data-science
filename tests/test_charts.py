@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins
+import hashlib
 import re
 
 import numpy as np
@@ -124,3 +125,29 @@ def test_grouped_bar_ticks_sit_at_the_middle_of_each_pair() -> None:
     ax = _all()[1].axes[0]
     xs = [p.get_x() + p.get_width() / 2 for p in ax.patches]
     assert ax.get_xticks().tolist() == pytest.approx([(xs[0] + xs[2]) / 2, (xs[1] + xs[3]) / 2])
+
+
+def test_receipt_is_the_hash_of_the_svg_and_follows_the_data(capsys: pytest.CaptureFixture[str]) -> None:
+    def receipt(value: float) -> str:
+        charts.show(charts.bar_chart("same title", "x", "y", ["1"], [value]))
+        return capsys.readouterr().out.strip()
+
+    expected = hashlib.sha256(charts.svg(charts.bar_chart("same title", "x", "y", ["1"], [0.5]))).hexdigest()[:12]
+    assert receipt(0.5) == f"chart same title sha256:{expected}"
+    assert receipt(0.6) != receipt(0.5)
+
+
+def test_a_non_callable_display_is_ignored(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    class Shell:
+        user_ns = {"display": "not callable"}
+
+    monkeypatch.setattr(builtins, "get_ipython", lambda: Shell(), raising=False)
+    monkeypatch.delattr(builtins, "display", raising=False)
+    charts.show(charts.line_chart("nc", "x", "y", [(1, 1)]))
+    assert capsys.readouterr().out.startswith("chart nc sha256:")
+
+
+def test_svg_closes_the_figure() -> None:
+    plt.close("all")
+    charts.svg(charts.line_chart("c", "x", "y", [(1, 1)]))
+    assert plt.get_fignums() == []
