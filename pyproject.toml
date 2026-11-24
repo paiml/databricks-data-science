@@ -5,7 +5,7 @@ description = "Elo team ranking and MVP scoring on the European Soccer Database,
 requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "Apache-2.0"}
-dependencies = ["duckdb>=1.1.0"]
+dependencies = ["duckdb>=1.1.0", "matplotlib>=3.8"]
 
 [project.optional-dependencies]
 dev = ["ruff==0.14.1", "mypy==1.14.1", "pytest==8.3.4", "pytest-cov==6.0.0"]

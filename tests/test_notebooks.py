@@ -55,3 +55,20 @@ def test_sql_notebook_carries_every_demo_statement() -> None:
     for name in ("c5_views.sql", "demo_elo.sql", "demo_mvp.sql", "demo_parity.sql"):
         for label, sql in sqldemo.load(name):
             assert sqldemo.normalise(sql) in flat, label
+
+
+CHART_COUNTS = {"course2_statistics_from_zero": 6, "course3_data_science_from_zero": 2}
+
+
+@pytest.mark.parametrize("name", sorted(CHART_COUNTS))
+def test_chart_cells_are_deterministic(
+    name: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("DBX_DS_ROOT", str(REPO))
+    monkeypatch.setenv("DBX_DS_DATA", str(FIXTURE))
+    runs = []
+    for _ in range(2):
+        runpy.run_path(str(REPO / "notebooks" / f"{name}.py"))
+        runs.append(re.findall(r"^chart .* sha256:[0-9a-f]{12}$", capsys.readouterr().out, re.M))
+    assert len(runs[0]) == CHART_COUNTS[name]
+    assert runs[0] == runs[1]
