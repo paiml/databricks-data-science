@@ -7,7 +7,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install duckdb
+# MAGIC %pip install duckdb matplotlib
 
 # COMMAND ----------
 
@@ -23,7 +23,7 @@ DATA_DIR = Path(os.environ.get("DBX_DS_DATA", ROOT / "data" / "fixture"))
 
 # COMMAND ----------
 
-from dbx_ds import course2, data, load, report, stats
+from dbx_ds import charts, course2, data, load, report, stats
 
 con = data.connect(DATA_DIR)
 matches = load.load_matches(con)
@@ -89,7 +89,9 @@ print(
 # 2.1.2 win, draw, loss rates
 home_wins, draws, away_wins = course2.result_counts(matches)
 report.pairs([("home wins", home_wins), ("draws", draws), ("away wins", away_wins), ("matches", len(matches))])
-print("\n".join(report.table_lines(["after n matches", "home win rate"], course2.running_home_win_rate(matches))))
+running = course2.running_home_win_rate(matches)
+print("\n".join(report.table_lines(["after n matches", "home win rate"], running)))
+charts.show(charts.line_chart("Running home win rate", "matches seen", "home win rate", running))
 
 # COMMAND ----------
 
@@ -124,6 +126,15 @@ fit = course2.poisson_fit(matches)
 print("\n".join(report.table_lines(["k", "real share", "Poisson share"], fit)))
 variance, mean = course2.variance_vs_mean(matches)
 report.pairs([("variance", variance), ("mean", mean)])
+charts.show(
+    charts.grouped_bars(
+        "Goals per team: real share against Poisson",
+        "goals k",
+        "share of matches",
+        [str(k) for k, _, _ in fit],
+        [("real", [r for _, r, _ in fit]), ("Poisson", [p for _, _, p in fit])],
+    )
+)
 
 # COMMAND ----------
 
@@ -136,6 +147,13 @@ report.pairs(list(course2.simulate(matches).items()))
 print("\n".join(report.table_lines(["x", "y", "correlation"], course2.attribute_correlations(con))))
 points = course2.scatter_sample(con, "potential", "overall_rating")
 print(len(points), "seeded points for the scatter chart; first three:", points[:3])
+for x, y in (("potential", "overall_rating"), ("sprint_speed", "overall_rating"), ("finishing", "overall_rating")):
+    charts.show(charts.scatter_chart(f"{y} against {x}", x, y, course2.scatter_sample(con, x, y)))
+charts.show(
+    charts.scatter_chart(
+        "weight against height", "height", "weight", course2.scatter_sample(con, "height", "weight", table="Player")
+    )
+)
 
 # COMMAND ----------
 

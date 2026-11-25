@@ -7,7 +7,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install duckdb
+# MAGIC %pip install duckdb matplotlib
 
 # COMMAND ----------
 
@@ -23,7 +23,7 @@ DATA_DIR = Path(os.environ.get("DBX_DS_DATA", ROOT / "data" / "fixture"))
 
 # COMMAND ----------
 
-from dbx_ds import course2, course3, data, features, load, report, stats
+from dbx_ds import charts, course2, course3, data, features, load, report, stats
 
 con = data.connect(DATA_DIR)
 matches = load.load_matches(con)
@@ -88,7 +88,17 @@ print(
 # COMMAND ----------
 
 # 1.3.4 rest days against home win rate
-print("\n".join(report.table_lines(["home rest days", "matches", "home win rate"], features.rest_vs_home_win(feats))))
+rest = features.rest_vs_home_win(feats)
+print("\n".join(report.table_lines(["home rest days", "matches", "home win rate"], rest)))
+charts.show(
+    charts.bar_chart(
+        "Home win rate by rest days",
+        "home rest days",
+        "home win rate",
+        [str(r) for r, _, _ in rest],
+        [w for _, _, w in rest],
+    )
+)
 
 # COMMAND ----------
 
@@ -161,3 +171,4 @@ report.pairs(
     + [(f"coef {name}", value) for name, value in result.coefficients]
 )
 print("\n".join(report.table_lines(["bin from", "mean predicted", "observed", "matches"], result.calibration)))
+charts.show(charts.calibration_chart("Calibration on the test seasons", result.calibration))

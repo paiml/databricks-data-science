@@ -118,6 +118,13 @@ def test_player_demos(con: duckdb.DuckDBPyConnection) -> None:
     assert [(x, y) for x, y, _ in corr][0] == ("overall_rating", "potential")
     points = course2.scatter_sample(con, "potential", "overall_rating")
     assert points == course2.scatter_sample(con, "potential", "overall_rating")
+    hw = course2.scatter_sample(con, "height", "weight", table="Player")
+    assert hw and hw == course2.scatter_sample(con, "height", "weight", table="Player")
+    direct = con.execute("SELECT height, weight FROM Player WHERE height IS NOT NULL AND weight IS NOT NULL").fetchall()
+    assert set(hw) <= {(float(h), float(w)) for h, w in direct}
+    swapped = course2.scatter_sample(con, "weight", "height", table="Player")
+    assert set(swapped) <= {(float(w), float(h)) for h, w in direct}
+    assert min(h for h, _ in hw) > 150 > min(w for _, w in hw)  # height is the first column, weight the second
     mean_rating, mean_potential = course2.rating_potential_means(con)
     assert mean_potential > mean_rating
     z = course2.rating_z(con)

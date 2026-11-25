@@ -1,0 +1,30 @@
+{
+  "video": "",
+  "video_sha256": "",
+  "contact_sheet": "",
+  "author_model": "",
+  "family_a": {
+    "family": "",
+    "model": "",
+    "scores": {
+      "narration_clarity": null,
+      "pacing": null,
+      "visual_quality": null,
+      "accuracy_vs_slides": null,
+      "glitch_intro_exit": null
+    },
+    "notes": ""
+  },
+  "family_b": {
+    "family": "",
+    "model": "",
+    "scores": {
+      "narration_clarity": null,
+      "pacing": null,
+      "visual_quality": null,
+      "accuracy_vs_slides": null,
+      "glitch_intro_exit": null
+    },
+    "notes": ""
+  }
+}

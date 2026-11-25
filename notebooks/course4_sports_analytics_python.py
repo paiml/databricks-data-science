@@ -54,6 +54,11 @@ print("\n".join(course4.elo_lines(a, league, SEASON, top=10)))
 
 # COMMAND ----------
 
+# 3.1.1 all leagues together: the current Elo table, each team at its latest season
+print("\n".join(course4.current_lines(a)))
+
+# COMMAND ----------
+
 # 1.3.5 standings check: points table against Elo, and the Spearman rank correlation
 rows, rho = eloplus.standings_check(a.games, a.ratings, league, SEASON)
 course4.print_table(

@@ -541,6 +541,19 @@ LIMIT 5;
 
 -- COMMAND ----------
 
+-- 3.1.1 all leagues together: the current Elo table, each team at its latest season, top five
+SELECT row_number() OVER (ORDER BY rating DESC, team_api_id) AS place, team_long_name, round(rating, 1) AS rating
+FROM (
+  SELECT e.team_api_id, t.team_long_name, e.rating,
+         row_number() OVER (PARTITION BY e.team_api_id ORDER BY e.season DESC) AS recency
+  FROM elo_season e JOIN Team t ON t.team_api_id = e.team_api_id
+) latest
+WHERE recency = 1
+ORDER BY rating DESC, team_api_id
+LIMIT 5;
+
+-- COMMAND ----------
+
 -- 3.1.1 filter the Elo table by league and season: the Premier League top five of 2015/2016
 SELECT t.team_long_name, round(e.rating, 1) AS rating
 FROM elo_season e
