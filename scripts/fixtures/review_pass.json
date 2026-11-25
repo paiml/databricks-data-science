@@ -1,0 +1,18 @@
+{
+  "video": "synthetic-clip.mp4",
+  "video_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "contact_sheet": "contact_sheet.png",
+  "author_model": "claude-haiku-5-5",
+  "family_a": {
+    "family": "anthropic-sonnet",
+    "model": "claude-sonnet-5-5",
+    "scores": {"narration_clarity": 4, "pacing": 5, "visual_quality": 4, "accuracy_vs_slides": 5, "glitch_intro_exit": 4},
+    "notes": "synthetic fixture"
+  },
+  "family_b": {
+    "family": "google-gemini",
+    "model": "gemini-2.5-pro",
+    "scores": {"narration_clarity": 5, "pacing": 4, "visual_quality": 4, "accuracy_vs_slides": 4, "glitch_intro_exit": 5},
+    "notes": "synthetic fixture"
+  }
+}
