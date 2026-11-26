@@ -35,7 +35,10 @@ test:
 coverage:
 	$(PYTHON) -m pytest -q --cov --cov-report=term-missing
 
-gate: lint typecheck coverage
+video-gate-selftest:
+	bash scripts/video_gate.sh --selftest
+
+gate: lint typecheck coverage video-gate-selftest
 
 clean:
 	rm -rf .pytest_cache .coverage htmlcov .mypy_cache .ruff_cache build dist *.egg-info
